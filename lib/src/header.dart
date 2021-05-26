@@ -69,7 +69,15 @@ abstract class TarHeader {
       case TypeFlag.char:
       case TypeFlag.fifo:
         return false;
-      default:
+      case TypeFlag.reg:
+      case TypeFlag.regA:
+      case TypeFlag.reserved:
+      case TypeFlag.xHeader:
+      case TypeFlag.xGlobalHeader:
+      case TypeFlag.gnuSparse:
+      case TypeFlag.gnuLongName:
+      case TypeFlag.gnuLongLink:
+      case TypeFlag.vendor:
         return true;
     }
   }
@@ -91,27 +99,26 @@ abstract class TarHeader {
     DateTime? changed,
     int devMajor = 0,
     int devMinor = 0,
-  }) {
-    return HeaderImpl.internal(
-      name: name,
-      modified: modified ?? DateTime.fromMillisecondsSinceEpoch(0),
-      format: format ?? TarFormat.pax,
-      typeFlag: typeFlag ?? TypeFlag.reg,
-      linkName: linkName,
-      mode: mode,
-      size: size,
-      userName: userName,
-      userId: userId,
-      groupId: groupId,
-      groupName: groupName,
-      accessed: accessed,
-      changed: changed,
-      devMajor: devMajor,
-      devMinor: devMinor,
-    );
-  }
+  }) =>
+      HeaderImpl.internal(
+        name: name,
+        modified: modified ?? DateTime.fromMillisecondsSinceEpoch(0),
+        format: format ?? TarFormat.pax,
+        typeFlag: typeFlag ?? TypeFlag.reg,
+        linkName: linkName,
+        mode: mode,
+        size: size,
+        userName: userName,
+        userId: userId,
+        groupId: groupId,
+        groupName: groupName,
+        accessed: accessed,
+        changed: changed,
+        devMajor: devMajor,
+        devMinor: devMinor,
+      );
 
-  TarHeader._();
+  const TarHeader._();
 }
 
 @internal
@@ -187,17 +194,17 @@ class HeaderImpl extends TarHeader {
   })  : internalTypeFlag = typeFlag,
         super._();
 
-  factory HeaderImpl.parseBlock(Uint8List headerBlock,
-      {Map<String, String> paxHeaders = const {}}) {
-    assert(headerBlock.length == 512);
-
+  factory HeaderImpl.parseBlock(
+    Uint8List headerBlock, {
+    Map<String, String> paxHeaders = const {},
+  }) {
+    assert(headerBlock.length == 512, "Unexpected headerBlock length (${headerBlock.length}) expected 512.");
     final format = _getFormat(headerBlock);
     final size = paxHeaders.size ?? headerBlock.readOctal(124, 12);
-
     // Start by reading data available in every format.
     final header = HeaderImpl.internal(
       format: format,
-      name: headerBlock.readString(0, 100),
+      name: readStringUint8List(headerBlock, 0, 100),
       mode: headerBlock.readOctal(100, 8),
       // These should be octal, but some weird tar implementations ignore that?!
       // Encountered with package:RAL, version 1.28.0 on pub
@@ -206,94 +213,87 @@ class HeaderImpl extends TarHeader {
       size: size,
       modified: secondsSinceEpoch(headerBlock.readOctal(136, 12)),
       typeFlag: typeflagFromByte(headerBlock[156]),
-      linkName: headerBlock.readStringOrNullIfEmpty(157, 100),
+      linkName: readStringOrNullIfEmpty(headerBlock, 157, 100),
     );
-
     if (header.hasContent && size < 0) {
       throw TarException.header('Indicates an invalid size of $size');
-    }
-
-    if (format.isValid() && format != TarFormat.v7) {
-      // If it's a valid header that is not of the v7 format, it will have the
-      // USTAR fields
-      header
-        ..userName ??= headerBlock.readStringOrNullIfEmpty(265, 32)
-        ..groupName ??= headerBlock.readStringOrNullIfEmpty(297, 32)
-        ..devMajor = headerBlock.readNumeric(329, 8)
-        ..devMinor = headerBlock.readNumeric(337, 8);
-
-      // Prefix to the file name
-      var prefix = '';
-      if (format.has(TarFormat.ustar) || format.has(TarFormat.pax)) {
-        prefix = headerBlock.readString(345, 155);
-
-        if (headerBlock.any(isNotAscii)) {
-          header.format = format.mayOnlyBe(TarFormat.pax);
-        }
-      } else if (format.has(TarFormat.star)) {
-        prefix = headerBlock.readString(345, 131);
+    } else {
+      if (format.isValid() && format != TarFormat.v7) {
+        // If it's a valid header that is not of the v7 format, it will have the
+        // USTAR fields
         header
-          ..accessed = secondsSinceEpoch(headerBlock.readNumeric(476, 12))
-          ..changed = secondsSinceEpoch(headerBlock.readNumeric(488, 12));
-      } else if (format.has(TarFormat.gnu)) {
-        header.format = TarFormat.gnu;
-
-        if (headerBlock[345] != 0) {
-          header.accessed = secondsSinceEpoch(headerBlock.readNumeric(345, 12));
+          ..userName ??= readStringOrNullIfEmpty(headerBlock, 265, 32)
+          ..groupName ??= readStringOrNullIfEmpty(headerBlock, 297, 32)
+          ..devMajor = headerBlock.readNumeric(329, 8)
+          ..devMinor = headerBlock.readNumeric(337, 8);
+        // Prefix to the file name
+        var prefix = '';
+        if (format.has(TarFormat.ustar) || format.has(TarFormat.pax)) {
+          prefix = readStringUint8List(headerBlock, 345, 155);
+          if (headerBlock.any(isNotAscii)) {
+            header.format = format.mayOnlyBe(TarFormat.pax);
+          }
+        } else if (format.has(TarFormat.star)) {
+          prefix = readStringUint8List(headerBlock, 345, 131);
+          header
+            ..accessed = secondsSinceEpoch(headerBlock.readNumeric(476, 12))
+            ..changed = secondsSinceEpoch(headerBlock.readNumeric(488, 12));
+        } else if (format.has(TarFormat.gnu)) {
+          header.format = TarFormat.gnu;
+          if (headerBlock[345] != 0) {
+            header.accessed = secondsSinceEpoch(headerBlock.readNumeric(345, 12));
+          }
+          if (headerBlock[357] != 0) {
+            header.changed = secondsSinceEpoch(headerBlock.readNumeric(357, 12));
+          }
         }
-
-        if (headerBlock[357] != 0) {
-          header.changed = secondsSinceEpoch(headerBlock.readNumeric(357, 12));
+        if (prefix.isNotEmpty) {
+          header.name = '$prefix/${header.name}';
         }
       }
-
-      if (prefix.isNotEmpty) {
-        header.name = '$prefix/${header.name}';
-      }
+      return header.._applyPaxHeaders(paxHeaders);
     }
-
-    return header.._applyPaxHeaders(paxHeaders);
   }
 
   void _applyPaxHeaders(Map<String, String> headers) {
     for (final entry in headers.entries) {
       if (entry.value == '') {
-        continue; // Keep the original USTAR value
-      }
-
-      switch (entry.key) {
-        case paxPath:
-          name = entry.value;
-          break;
-        case paxLinkpath:
-          linkName = entry.value;
-          break;
-        case paxUname:
-          userName = entry.value;
-          break;
-        case paxGname:
-          groupName = entry.value;
-          break;
-        case paxUid:
-          userId = parseInt(entry.value);
-          break;
-        case paxGid:
-          groupId = parseInt(entry.value);
-          break;
-        case paxAtime:
-          accessed = parsePaxTime(entry.value);
-          break;
-        case paxMtime:
-          modified = parsePaxTime(entry.value);
-          break;
-        case paxCtime:
-          changed = parsePaxTime(entry.value);
-          break;
-        case paxSize:
-          size = parseInt(entry.value);
-          break;
-        default:
-          break;
+        // Keep the original USTAR value.
+      } else {
+        switch (entry.key) {
+          case paxPath:
+            name = entry.value;
+            break;
+          case paxLinkpath:
+            linkName = entry.value;
+            break;
+          case paxUname:
+            userName = entry.value;
+            break;
+          case paxGname:
+            groupName = entry.value;
+            break;
+          case paxUid:
+            userId = parseInt(entry.value);
+            break;
+          case paxGid:
+            groupId = parseInt(entry.value);
+            break;
+          case paxAtime:
+            accessed = parsePaxTime(entry.value);
+            break;
+          case paxMtime:
+            modified = parsePaxTime(entry.value);
+            break;
+          case paxCtime:
+            changed = parsePaxTime(entry.value);
+            break;
+          case paxSize:
+            size = parseInt(entry.value);
+            break;
+          default:
+            break;
+        }
       }
     }
   }
@@ -304,27 +304,20 @@ class HeaderImpl extends TarHeader {
 /// on magic values. If the checksum fails, then an error is thrown.
 TarFormat _getFormat(Uint8List rawHeader) {
   final checksum = rawHeader.readOctal(checksumOffset, checksumLength);
-
   // Modern TAR archives use the unsigned checksum, but we check the signed
   // checksum as well for compatibility.
-  if (checksum != rawHeader.computeUnsignedHeaderChecksum() &&
-      checksum != rawHeader.computeSignedHeaderChecksum()) {
-    throw TarException.header('Checksum does not match');
+  if (checksum != rawHeader.computeUnsignedHeaderChecksum() && checksum != rawHeader.computeSignedHeaderChecksum()) {
+    throw const TarException.header('Checksum does not match');
+  } else {
+    final hasUstarMagic = rawHeader.matchesHeader(magicUstar);
+    if (hasUstarMagic) {
+      return rawHeader.matchesHeader(trailerStar, offset: starTrailerOffset) ? TarFormat.star : TarFormat.ustar | TarFormat.pax;
+    } else if (rawHeader.matchesHeader(magicGnu) && rawHeader.matchesHeader(versionGnu, offset: versionOffset)) {
+      return TarFormat.gnu;
+    } else {
+      return TarFormat.v7;
+    }
   }
-
-  final hasUstarMagic = rawHeader.matchesHeader(magicUstar);
-  if (hasUstarMagic) {
-    return rawHeader.matchesHeader(trailerStar, offset: starTrailerOffset)
-        ? TarFormat.star
-        : TarFormat.ustar | TarFormat.pax;
-  }
-
-  if (rawHeader.matchesHeader(magicGnu) &&
-      rawHeader.matchesHeader(versionGnu, offset: versionOffset)) {
-    return TarFormat.gnu;
-  }
-
-  return TarFormat.v7;
 }
 
 extension _ReadPaxHeaders on Map<String, String> {

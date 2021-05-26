@@ -16,18 +16,15 @@ Future<void> createTestFile(String path, int size) {
   final random = Random();
   final file = File(path);
   final sink = file.openWrite();
-
   const chunkSize = 1024;
   for (var i = 0; i < size ~/ chunkSize; i++) {
     final buffer = Uint8List(chunkSize);
     fillRandomBytes(buffer, random);
     sink.add(buffer);
   }
-
   final remaining = Uint8List(size % chunkSize);
   fillRandomBytes(remaining, random);
   sink.add(remaining);
-
   return sink.close();
 }
 
@@ -41,7 +38,6 @@ Future<void> createCleanSparseTestFile(String path, int size) async {
 Future<void> createSparseTestFile(String path, int size) {
   final sink = File(path).openWrite();
   final random = Random();
-
   var remaining = size;
   while (remaining > 0) {
     final nextBlockSize = min(remaining, 512);
@@ -52,10 +48,8 @@ Future<void> createSparseTestFile(String path, int size) {
       fillRandomBytes(block, random);
       sink.add(block);
     }
-
     remaining -= nextBlockSize;
   }
-
   return sink.close();
 }
 
@@ -67,25 +61,19 @@ void fillRandomBytes(List<int> bytes, Random random) {
 
 Future<void> validate(Stream<List<int>> tar, Map<String, String> files) async {
   final reader = TarReader(tar);
-
   for (var i = 0; i < files.length; i++) {
     expect(await reader.moveNext(), isTrue);
-
     final fileName = reader.current.name;
     final matchingFile = files[fileName];
-
     if (matchingFile == null) {
       fail('Unexpected file $fileName in tar file');
     }
-
     final actualContents = ChunkedStreamReader(File(matchingFile).openRead());
     final tarContents = ChunkedStreamReader(reader.current.contents);
-
-    while (true) {
+    for (;;) {
       final actualChunk = await actualContents.readBytes(1024);
       final tarChunk = await tarContents.readBytes(1024);
       expect(tarChunk, actualChunk);
-
       if (actualChunk.isEmpty) break;
     }
   }
@@ -103,18 +91,14 @@ void main() {
     'clean_sparse_2': 65534,
   };
   late String baseDirectory;
-
   String path(String fileName) => '$baseDirectory/$fileName';
-
   setUpAll(() async {
     baseDirectory = Directory.systemTemp.path +
         '/tar_test/${DateTime.now().millisecondsSinceEpoch}';
     await Directory(baseDirectory).create(recursive: true);
-
     for (final entry in testFiles.entries) {
       final name = entry.key;
       final size = entry.value;
-
       if (name.contains('clean')) {
         await createCleanSparseTestFile(path(name), size);
       } else if (name.contains('sparse')) {
@@ -124,11 +108,9 @@ void main() {
       }
     }
   });
-
   tearDownAll(() {
     Directory(baseDirectory).delete(recursive: true);
   });
-
   Future<void> testSubset(
       Iterable<String> keys, String format, String? sparse) {
     final files = {for (final file in keys) file: path(file)};
@@ -136,13 +118,11 @@ void main() {
         baseDir: baseDirectory, archiveFormat: format, sparseVersion: sparse);
     return validate(tar, files);
   }
-
   for (final format in ['gnu', 'v7', 'oldgnu', 'posix', 'ustar']) {
     group('reads large files in $format', () {
       test('single file', () {
         return testSubset(['reg_1'], format, null);
       });
-
       test('reads multiple large files successfully', () {
         return testSubset(['reg_1', 'reg_2', 'reg_3'], format, null);
       });
@@ -155,11 +135,9 @@ void main() {
         test('reads a clean sparse file', () {
           return testSubset(['clean_sparse_1'], format, sparseVersion);
         });
-
         test('reads a sparse file', () {
           return testSubset(['sparse_1'], format, sparseVersion);
         });
-
         test('reads clean sparse / regular files', () {
           return testSubset(
             ['reg_1', 'clean_sparse_1', 'reg_3', 'clean_sparse_2'],
@@ -167,7 +145,6 @@ void main() {
             sparseVersion,
           );
         });
-
         test('reads mixed regular / sparse / clean sparse files', () {
           return testSubset(
             ['reg_1', 'sparse_2', 'clean_sparse_1', 'reg_3'],
@@ -178,9 +155,8 @@ void main() {
       });
     }
   }
-
   group('sparse entries', () {
-    final tests = [
+    const tests = [
       _SparseTestcase(
         input: [],
         size: 0,
@@ -307,15 +283,12 @@ void main() {
         isValid: false,
       ),
     ];
-
     for (var i = 0; i < tests.length; i++) {
       final testcase = tests[i];
-
       test('validateSparseEntries #$i', () {
         expect(validateSparseEntries(testcase.input, testcase.size),
             testcase.isValid);
       });
-
       if (testcase.isValid) {
         test('invertSparseEntries #$i', () {
           expect(invertSparseEntries(testcase.input, testcase.size),
@@ -332,7 +305,7 @@ class _SparseTestcase {
   final bool isValid;
   final List<SparseEntry>? inverted;
 
-  _SparseTestcase({
+  const _SparseTestcase({
     required this.input,
     required this.size,
     required this.isValid,

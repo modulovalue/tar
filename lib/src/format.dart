@@ -30,18 +30,16 @@ class TarFormat {
   @override
   bool operator ==(Object? other) {
     if (other is! TarFormat) return false;
-
     return _value == other._value;
   }
 
   @override
   String toString() {
     if (!isValid()) return 'Invalid';
-
-    final possibleNames = _formatNames.entries
+    final possibleNames = _formatNames //
+        .entries
         .where((e) => _value & e.key != 0)
         .map((e) => e.value);
-
     return possibleNames.join(' or ');
   }
 
@@ -63,9 +61,7 @@ class TarFormat {
   ///
   /// The above code would signify that we have limited `format` to either
   /// the USTAR or PAX format, but need further information to refine the guess.
-  TarFormat operator |(TarFormat other) {
-    return mayBe(other);
-  }
+  TarFormat operator |(TarFormat other) => mayBe(other);
 
   /// Returns a new [TarFormat] that signifies that it can be either
   /// `this` or [other]'s format.
@@ -79,8 +75,11 @@ class TarFormat {
   /// The above code would signify that we learnt that in addition to being a
   /// PAX format, it could also be of the USTAR format.
   TarFormat mayBe(TarFormat? other) {
-    if (other == null) return this;
-    return TarFormat._internal(_value | other._value);
+    if (other == null) {
+      return this;
+    } else {
+      return TarFormat._internal(_value | other._value);
+    }
   }
 
   /// Returns a new [TarFormat] that signifies that it can only be [other]'s
@@ -98,9 +97,7 @@ class TarFormat {
   ///
   /// If `has(other) == false`, [mayOnlyBe] will result in an unknown
   /// [TarFormat].
-  TarFormat mayOnlyBe(TarFormat other) {
-    return TarFormat._internal(_value & other._value);
-  }
+  TarFormat mayOnlyBe(TarFormat other) => TarFormat._internal(_value & other._value);
 
   /// Returns if this format might be valid.
   ///

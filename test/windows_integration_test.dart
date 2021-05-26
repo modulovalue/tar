@@ -12,11 +12,9 @@ void main() {
     final entry = TarEntry.data(TarHeader(name: name), []);
     final file = File(Directory.systemTemp.path + '\\tar_test.tar');
     addTearDown(file.delete);
-
-    await Stream.value(entry)
+    await Stream.value(entry) //
         .transform(tarWriterWith(format: OutputFormat.gnuLongName))
         .pipe(file.openWrite());
-
     final proc = await Process.start('7za.exe', ['l', file.path]);
     expect(proc.lines, emitsThrough(contains(name)));
   });

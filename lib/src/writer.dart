@@ -21,7 +21,6 @@ class _WritingTransformer extends StreamTransformerBase<TarEntry, List<int>> {
     controller.onListen = () {
       stream.pipe(tarWritingSink(controller, format: format));
     };
-
     return controller.stream;
   }
 }
@@ -36,8 +35,7 @@ class _WritingTransformer extends StreamTransformerBase<TarEntry, List<int>> {
 /// When piping the resulting stream into a [StreamConsumer], consider using
 /// [tarWritingSink] directly.
 /// To change the output format of files with long names, use [tarWriterWith].
-const StreamTransformer<TarEntry, List<int>> tarWriter =
-    _WritingTransformer(OutputFormat.pax);
+const StreamTransformer<TarEntry, List<int>> tarWriter = _WritingTransformer(OutputFormat.pax);
 
 /// Creates a stream transformer writing tar entries as byte streams, with
 /// custom encoding options.
@@ -55,10 +53,10 @@ const StreamTransformer<TarEntry, List<int>> tarWriter =
 ///
 /// When using the default options, prefer using the constant [tarWriter]
 /// instead.
-StreamTransformer<TarEntry, List<int>> tarWriterWith(
-    {OutputFormat format = OutputFormat.pax}) {
-  return _WritingTransformer(format);
-}
+StreamTransformer<TarEntry, List<int>> tarWriterWith({
+  OutputFormat format = OutputFormat.pax,
+}) =>
+    _WritingTransformer(format);
 
 /// Create a sink emitting encoded tar files to the [output] sink.
 ///
@@ -94,10 +92,11 @@ StreamTransformer<TarEntry, List<int>> tarWriterWith(
 /// See also:
 ///  - [tarWriter], a stream transformer using this sink
 ///  - [StreamSink]
-StreamSink<TarEntry> tarWritingSink(StreamSink<List<int>> output,
-    {OutputFormat format = OutputFormat.pax}) {
-  return _WritingSink(output, format);
-}
+StreamSink<TarEntry> tarWritingSink(
+  StreamSink<List<int>> output, {
+  OutputFormat format = OutputFormat.pax,
+}) =>
+    _WritingSink(output, format);
 
 /// This option controls how long file and link names should be written.
 ///
@@ -128,11 +127,9 @@ enum OutputFormat {
 class _WritingSink extends StreamSink<TarEntry> {
   final StreamSink<List<int>> _output;
   final OutputFormat format;
-
   int _paxHeaderCount = 0;
   bool _closed = false;
   final Completer<Object?> _done = Completer();
-
   int _pendingOperations = 0;
   Future<void> _ready = Future.value();
 
@@ -145,19 +142,16 @@ class _WritingSink extends StreamSink<TarEntry> {
   Future<void> add(TarEntry event) {
     if (_closed) {
       throw StateError('Cannot add event after close was called');
+    } else {
+      return _doWork(() => _safeAdd(event));
     }
-    return _doWork(() => _safeAdd(event));
   }
 
   Future<void> _doWork(FutureOr<void> Function() work) {
     _pendingOperations++;
     // Chain futures to make sure we only write one entry at a time.
-    return _ready = _ready
-        .then((_) => work())
-        .catchError(_output.addError)
-        .whenComplete(() {
+    return _ready = _ready.then((_) => work()).catchError(_output.addError).whenComplete(() {
       _pendingOperations--;
-
       if (_closed && _pendingOperations == 0) {
         _done.complete(_output.close());
       }
@@ -174,17 +168,14 @@ class _WritingSink extends StreamSink<TarEntry> {
       bufferedData = builder.takeBytes();
       size = bufferedData.length;
     }
-
     var nameBytes = utf8.encode(header.name);
     var linkBytes = utf8.encode(header.linkName ?? '');
     var gnameBytes = utf8.encode(header.groupName ?? '');
     var unameBytes = utf8.encode(header.userName ?? '');
-
     // We only get 100 chars for the name and link name. If they are longer, we
     // have to insert an entry just to store the names. Some tar implementations
     // expect them to be zero-terminated, so use 99 chars to be safe.
     final paxHeader = <String, List<int>>{};
-
     if (nameBytes.length > 99) {
       paxHeader[paxPath] = nameBytes;
       nameBytes = nameBytes.sublist(0, 99);
@@ -193,7 +184,6 @@ class _WritingSink extends StreamSink<TarEntry> {
       paxHeader[paxLinkpath] = linkBytes;
       linkBytes = linkBytes.sublist(0, 99);
     }
-
     // It's even worse for users and groups, where we only get 31 usable chars.
     if (gnameBytes.length > 31) {
       paxHeader[paxGname] = gnameBytes;
@@ -203,11 +193,9 @@ class _WritingSink extends StreamSink<TarEntry> {
       paxHeader[paxUname] = unameBytes;
       unameBytes = unameBytes.sublist(0, 31);
     }
-
     if (size > maxIntFor12CharOct) {
       paxHeader[paxSize] = ascii.encode(size.toString());
     }
-
     if (paxHeader.isNotEmpty) {
       if (format == OutputFormat.pax) {
         await _writePaxHeader(paxHeader);
@@ -215,7 +203,6 @@ class _WritingSink extends StreamSink<TarEntry> {
         await _writeGnuLongName(paxHeader);
       }
     }
-
     final headerBlock = Uint8List(blockSize)
       ..setAll(0, nameBytes)
       ..setUint(header.mode, 100, 8)
@@ -231,23 +218,19 @@ class _WritingSink extends StreamSink<TarEntry> {
       ..setAll(297, gnameBytes)
       // To calculate the checksum, we first fill the checksum range with spaces
       ..setAll(148, List.filled(8, $space));
-
     // Then, we take the sum of the header
     var checksum = 0;
     for (final byte in headerBlock) {
       checksum += byte;
     }
     headerBlock.setUint(checksum, 148, 8);
-
     _output.add(headerBlock);
-
     // Write content.
     if (bufferedData != null) {
       _output.add(bufferedData);
     } else {
       await event.contents.forEach(_output.add);
     }
-
     final padding = -size % blockSize;
     _output.add(Uint8List(padding));
   }
@@ -265,17 +248,14 @@ class _WritingSink extends StreamSink<TarEntry> {
       // +3 for the whitespace, the equals and the \n
       final payloadLength = encodedKey.length + value.length + 3;
       var indicatedLength = payloadLength;
-
       // The indicated length contains the length (in decimals) itself. So if
       // we had payloadLength=9, then we'd prefix a 9 at which point the whole
       // string would have a length of 10. If that happens, increment length.
       var actualLength = payloadLength + indicatedLength.toString().length;
-
       while (actualLength != indicatedLength) {
         indicatedLength++;
         actualLength = payloadLength + indicatedLength.toString().length;
       }
-
       // With that sorted out, let's add the line
       buffer
         ..add(utf8.encode(indicatedLength.toString()))
@@ -285,7 +265,6 @@ class _WritingSink extends StreamSink<TarEntry> {
         ..add(value)
         ..addByte($lf); // \n
     });
-
     final paxData = buffer.takeBytes();
     final file = TarEntry.data(
       HeaderImpl.internal(
@@ -312,10 +291,8 @@ class _WritingSink extends StreamSink<TarEntry> {
         'Try using OutputFormat.pax instead.',
       );
     }
-
     final name = values[paxPath];
     final linkName = values[paxLinkpath];
-
     Future<void> write(List<int> name, TypeFlag flag) {
       return _safeAdd(
         TarEntry.data(
@@ -354,14 +331,12 @@ class _WritingSink extends StreamSink<TarEntry> {
   Future<void> close() async {
     if (!_closed) {
       _closed = true;
-
       // Add two empty blocks at the end.
       await _doWork(() {
         _output.add(zeroBlock);
         _output.add(zeroBlock);
       });
     }
-
     return done;
   }
 }
@@ -373,11 +348,9 @@ extension on Uint8List {
 
     // Set terminating space char.
     this[position + length - 1] = $space;
-
     // Write as octal value, we write from right to left
     var number = value;
     var needsExplicitZero = number == 0;
-
     for (var pos = position + length - 2; pos >= position; pos--) {
       if (number != 0) {
         // Write the last octal digit of the number (e.g. the last 4 bits)

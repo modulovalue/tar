@@ -15,12 +15,10 @@ void main() {
     'RAL-1.28.0',
     'rikulo_commons-0.7.6',
   ];
-
   for (final package in onceBroken) {
     test('can read $package', () async {
       final file = File('reference/pub/$package.tar.gz');
       final tarStream = file.openRead().transform(gzip.decoder);
-
       final reader = TarReader(tarStream, disallowTrailingData: true);
       while (await reader.moveNext()) {}
     });

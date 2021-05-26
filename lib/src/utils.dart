@@ -9,51 +9,63 @@ import 'exception.dart';
 const _checksumEnd = checksumOffset + checksumLength;
 const _checksumPlaceholder = $space;
 
-extension ByteBufferUtils on Uint8List {
-  String readString(int offset, int maxLength) {
-    return readStringOrNullIfEmpty(offset, maxLength) ?? '';
-  }
+String readStringUint8List(List<int> list, int offset, int maxLength) {
+  return readStringOrNullIfEmpty(list, offset, maxLength) ?? '';
+}
 
-  Uint8List sublistView(int start, [int? end]) {
-    return Uint8List.sublistView(this, start, end);
-  }
-
-  String? readStringOrNullIfEmpty(int offset, int maxLength) {
-    var data = sublistView(offset, offset + maxLength);
-    var contentLength = data.indexOf(0);
-    // If there's no \0, assume that the string fills the whole segment
-    if (contentLength.isNegative) contentLength = maxLength;
-
-    if (contentLength == 0) return null;
-
-    data = data.sublistView(0, contentLength);
+String? readStringOrNullIfEmpty(List<int> list, int offset, int maxLength) {
+  final end = offset + maxLength;
+  final contentEndsAt = () {
+    final indexOf0 = () {
+      // Search for the first 0.
+      for (int i = offset; i < end; i++) {
+        if (list[i] == 0) {
+          return i;
+        }
+      }
+    }();
+    // If there's no \0, assume that the string fills the whole segment.
+    if (indexOf0 == null) {
+      return end;
+    } else {
+      return indexOf0;
+    }
+  }();
+  if (contentEndsAt - offset == 0) {
+    return null;
+  } else {
     try {
-      return utf8.decode(data);
+      return const Utf8Decoder(allowMalformed: false).convert(list, offset, contentEndsAt);
     } on FormatException {
-      return String.fromCharCodes(data).trim();
+      return String.fromCharCodes(list, offset, contentEndsAt)
+          // That trimming looks suspicious.
+          .trim();
     }
   }
+}
 
+Uint8List sublistView(Uint8List list, int start, [int? end]) {
+  return Uint8List.sublistView(list, start, end);
+}
+
+extension ByteBufferUtils on Uint8List {
   /// Parse an octal string encoded from index [offset] with the maximum length
   /// [length].
   int readOctal(int offset, int length) {
     var result = 0;
     var multiplier = 1;
-
     for (var i = length - 1; i >= 0; i--) {
       final charCode = this[offset + i];
       // Some tar implementations add a \0 or space at the end, ignore that
       if (charCode == 0 || charCode == $space) continue;
       if (charCode < $0 || charCode > $9) {
-        throw TarException('Invalid octal value');
+        throw const TarException('Invalid octal value');
       }
-
       // Obtain the numerical value of this digit
       final digit = charCode - $0;
       result += digit * multiplier;
       multiplier <<= 3; // Multiply by the base, 8
     }
-
     return result;
   }
 
@@ -61,58 +73,49 @@ extension ByteBufferUtils on Uint8List {
   ///
   /// This function may return negative numbers.
   int readNumeric(int offset, int length) {
-    if (length == 0) return 0;
-
-    // Check for base-256 (binary) format first. If the first bit is set, then
-    // all following bits constitute a two's complement encoded number in big-
-    // endian byte order.
-    final firstByte = this[offset];
-    if (firstByte & 0x80 != 0) {
-      // Handling negative numbers relies on the following identity:
-      // -a-1 == ~a
-      //
-      // If the number is negative, we use an inversion mask to invert the
-      // date bytes and treat the value as an unsigned number.
-      final inverseMask = firstByte & 0x40 != 0 ? 0xff : 0x00;
-
-      // Ignore signal bit in the first byte
-      var x = (firstByte ^ inverseMask) & 0x7f;
-
-      for (var i = 1; i < length; i++) {
-        var byte = this[offset + i];
-        byte ^= inverseMask;
-
-        x = x << 8 | byte;
+    if (length == 0) {
+      return 0;
+    } else {
+      // Check for base-256 (binary) format first. If the first bit is set, then
+      // all following bits constitute a two's complement encoded number in big-
+      // endian byte order.
+      final firstByte = this[offset];
+      if (firstByte & 0x80 != 0) {
+        // Handling negative numbers relies on the following identity:
+        // -a-1 == ~a
+        //
+        // If the number is negative, we use an inversion mask to invert the
+        // date bytes and treat the value as an unsigned number.
+        final inverseMask = firstByte & 0x40 != 0 ? 0xff : 0x00;
+        // Ignore signal bit in the first byte
+        var x = (firstByte ^ inverseMask) & 0x7f;
+        for (var i = 1; i < length; i++) {
+          var byte = this[offset + i];
+          byte ^= inverseMask;
+          x = x << 8 | byte;
+        }
+        return inverseMask == 0xff ? ~x : x;
       }
-
-      return inverseMask == 0xff ? ~x : x;
+      return readOctal(offset, length);
     }
-
-    return readOctal(offset, length);
   }
 
   int computeUnsignedHeaderChecksum() {
     var result = 0;
-
     for (var i = 0; i < length; i++) {
       result += (i < checksumOffset || i >= _checksumEnd)
           ? this[i] // Not in range of where the checksum is written
           : _checksumPlaceholder;
     }
-
     return result;
   }
 
   int computeSignedHeaderChecksum() {
     var result = 0;
-
     for (var i = 0; i < length; i++) {
       // Note that _checksumPlaceholder.toSigned(8) == _checksumPlaceholder
-      result += (i < checksumOffset || i >= _checksumEnd)
-          ? this[i].toSigned(8)
-          : _checksumPlaceholder;
+      result += (i < checksumOffset || i >= _checksumEnd) ? this[i].toSigned(8) : _checksumPlaceholder;
     }
-
     return result;
   }
 
@@ -120,7 +123,6 @@ extension ByteBufferUtils on Uint8List {
     for (var i = 0; i < header.length; i++) {
       if (this[offset + i] != header[i]) return false;
     }
-
     return true;
   }
 }
@@ -130,8 +132,7 @@ bool isNotAscii(int i) => i > 128;
 /// Like [int.parse], but throwing a [TarException] instead of the more-general
 /// [FormatException] when it fails.
 int parseInt(String source) {
-  return int.tryParse(source, radix: 10) ??
-      (throw TarException('Not an int: $source'));
+  return int.tryParse(source, radix: 10) ?? (throw TarException('Not an int: $source'));
 }
 
 /// Takes a [paxTimeString] of the form %d.%d as described in the PAX
@@ -158,19 +159,13 @@ DateTime parsePaxTime(String paxTimeString) {
   if (seconds == null) {
     throw TarException.header('Invalid PAX time $paxTimeString detected!');
   }
-
   if (microSecondsString.replaceAll(RegExp('[0-9]'), '') != '') {
-    throw TarException.header(
-        'Invalid nanoseconds $microSecondsString detected');
+    throw TarException.header('Invalid nanoseconds $microSecondsString detected');
   }
-
   microSecondsString = microSecondsString.padRight(maxMicroSecondDigits, '0');
   microSecondsString = microSecondsString.substring(0, maxMicroSecondDigits);
-
-  var microSeconds =
-      microSecondsString.isEmpty ? 0 : int.parse(microSecondsString);
+  var microSeconds = microSecondsString.isEmpty ? 0 : int.parse(microSecondsString);
   if (paxTimeString.startsWith('-')) microSeconds = -microSeconds;
-
   return microsecondsSinceEpoch(microSeconds + seconds * pow(10, 6).toInt());
 }
 
@@ -188,7 +183,6 @@ DateTime microsecondsSinceEpoch(int microseconds) {
 
 int numBlocks(int fileSize) {
   if (fileSize % blockSize == 0) return fileSize ~/ blockSize;
-
   return fileSize ~/ blockSize + 1;
 }
 
@@ -205,7 +199,6 @@ extension ToTyped on List<int> {
     for (var i = 0; i < length; i++) {
       if (this[i] != 0) return false;
     }
-
     return true;
   }
 }
@@ -218,7 +211,6 @@ Stream<List<int>> zeroes(int length) async* {
     yield Uint8List(length);
     return;
   }
-
   final chunk = Uint8List(chunkSize);
   for (var i = 0; i < length ~/ chunkSize; i++) {
     yield chunk;

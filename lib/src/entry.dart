@@ -47,9 +47,9 @@ class TarEntry {
   /// Otherwise, the tar writer needs to buffer contents to determine the right
   /// size.
   // factory so that this class can't be extended
-  factory TarEntry(TarHeader header, Stream<List<int>> contents) = TarEntry._;
+  const factory TarEntry(TarHeader header, Stream<List<int>> contents) = TarEntry._;
 
-  TarEntry._(this.header, this.contents);
+  const TarEntry._(this.header, this.contents);
 
   /// Creates an in-memory tar entry from the [header] and the [data] to store.
   factory TarEntry.data(TarHeader header, List<int> data) {

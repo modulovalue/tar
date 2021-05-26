@@ -18,14 +18,15 @@ void main() {
           tar.TarHeader(name: name, mode: 0, size: 0),
           Uint8List(0),
         );
-
-        final proc = await writeToTar(['--list'], Stream.value(withLongName),
-            format: style);
+        final proc = await writeToTar(
+          ['--list'],
+          Stream.value(withLongName),
+          format: style,
+        );
         expect(proc.lines, emits(contains(name)));
       });
     }
   }, testOn: '!windows');
-
   test('writes headers', () async {
     final date = DateTime.parse('2020-12-30 12:34');
     final entry = tar.TarEntry.data(
@@ -41,7 +42,6 @@ void main() {
       ),
       Uint8List(0),
     );
-
     final proc = await writeToTar(['--list', '--verbose'], Stream.value(entry));
     expect(
       proc.lines,
@@ -55,11 +55,9 @@ void main() {
       ),
     );
   }, testOn: '!windows');
-
   test('writes huge files', () async {
     final oneMb = Uint8List(oneMbSize);
     const count = tenGbSize ~/ oneMbSize;
-
     final entry = tar.TarEntry(
       tar.TarHeader(
         name: 'file.blob',
@@ -68,22 +66,18 @@ void main() {
       ),
       Stream<List<int>>.fromIterable(Iterable.generate(count, (i) => oneMb)),
     );
-
     final proc = await writeToTar(['--list', '--verbose'], Stream.value(entry));
     expect(proc.lines, emits(contains(tenGbSize.toString())));
   }, testOn: '!windows');
-
   group('refuses to write files with OutputFormat.gnu', () {
     void shouldThrow(tar.TarEntry entry) {
-      final output = tar.tarWritingSink(_NullStreamSink(),
-          format: tar.OutputFormat.gnuLongName);
+      final output = tar.tarWritingSink(_NullStreamSink(), format: tar.OutputFormat.gnuLongName);
       expect(Stream.value(entry).pipe(output), throwsA(isUnsupportedError));
     }
 
     test('when they are too large', () {
       final oneMb = Uint8List(oneMbSize);
       const count = tenGbSize ~/ oneMbSize;
-
       final entry = tar.TarEntry(
         tar.TarHeader(
           name: 'file.blob',
@@ -94,7 +88,6 @@ void main() {
       );
       shouldThrow(entry);
     });
-
     test('when they use long user names', () {
       shouldThrow(
         tar.TarEntry.data(
@@ -110,6 +103,8 @@ void main() {
 }
 
 class _NullStreamSink<T> extends StreamSink<T> {
+  _NullStreamSink();
+
   @override
   void add(T event) {}
 
@@ -120,9 +115,7 @@ class _NullStreamSink<T> extends StreamSink<T> {
   }
 
   @override
-  Future<void> addStream(Stream<T> stream) {
-    return stream.forEach(add);
-  }
+  Future<void> addStream(Stream<T> stream) => stream.forEach(add);
 
   @override
   Future<void> close() async {}

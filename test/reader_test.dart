@@ -12,58 +12,42 @@ import 'package:test/test.dart';
 void main() {
   group('POSIX.1-2001', () {
     test('reads files', () => _testWith('reference/posix.tar'));
-
-    test('reads large files',
-        () => _testLargeFile('reference/headers/large_posix.tar'));
+    test('reads large files', () => _testLargeFile('reference/headers/large_posix.tar'));
   });
-
   test('(new) GNU Tar format', () => _testWith('reference/gnu.tar'));
   test('ustar', () => _testWith('reference/ustar.tar'));
   test('v7', () => _testWith('reference/v7.tar', ignoreLongFileName: true));
-
   test('can skip tar files', () async {
     final input = File('reference/posix.tar').openRead();
     final reader = TarReader(input);
-
     expect(await reader.moveNext(), isTrue);
     expect(await reader.moveNext(), isTrue);
     expect(reader.current.name, 'reference/res/subdirectory_with_a_long_name/');
   });
-
   test('getters throw before moveNext() is called', () {
     final reader = TarReader(const Stream<Never>.empty());
-
     expect(() => reader.current, throwsStateError);
   });
-
   test("can't use moveNext() concurrently", () {
-    final reader = TarReader(Stream.fromFuture(
-        Future.delayed(const Duration(seconds: 2), () => <int>[])));
-
+    final reader = TarReader(Stream.fromFuture(Future.delayed(const Duration(seconds: 2), () => <int>[])));
     expect(reader.moveNext(), completion(isFalse));
     expect(() => reader.moveNext(), throwsStateError);
     return reader.cancel();
   });
-
   test("can't use moveNext() while a stream is active", () async {
     final input = File('reference/posix.tar').openRead();
     final reader = TarReader(input);
-
     expect(await reader.moveNext(), isTrue);
     reader.current.contents.listen((event) {}).pause();
-
     expect(() => reader.moveNext(), throwsStateError);
     await reader.cancel();
   });
-
   test("can't use moveNext() after canceling the reader", () async {
     final input = File('reference/posix.tar').openRead();
     final reader = TarReader(input);
     await reader.cancel();
-
     expect(() => reader.moveNext(), throwsStateError);
   });
-
   group('the reader closes itself', () {
     test("at the end of a file", () async {
       // two zero blocks terminate a tar file
@@ -72,25 +56,21 @@ void main() {
       controller.onListen = () {
         controller..add(zeroBlock)..add(zeroBlock)..add(zeroBlock);
       };
-
       final reader = TarReader(controller.stream);
       await expectLater(reader.moveNext(), completion(isFalse));
-
       expect(controller.hasListener, isFalse);
+      await controller.close();
     });
-
     test('if the stream emits an error in headers', () async {
       final controller = StreamController<List<int>>();
       controller.onListen = () {
         controller.addError('foo');
       };
-
       final reader = TarReader(controller.stream);
       await expectLater(reader.moveNext(), throwsA('foo'));
-
       expect(controller.hasListener, isFalse);
+      await controller.close();
     });
-
     test('if the stream emits an error in content', () async {
       // Craft a stream that starts with a valid tar file, but then emits an
       // error in the middle of an entry. First 512 bytes are headers.
@@ -101,30 +81,23 @@ void main() {
         await controller.addStream(iterator.readStream(515));
         controller.addError('foo');
       };
-
       final reader = TarReader(controller.stream);
       await expectLater(reader.moveNext(), completion(isTrue));
-      await expectLater(
-          reader.current.contents, emitsThrough(emitsError('foo')));
-
+      await expectLater(reader.current.contents, emitsThrough(emitsError('foo')));
       expect(controller.hasListener, isFalse);
       await iterator.cancel();
+      await controller.close();
     });
   });
-
   group('disallowTrailingData: true', () {
     final emptyBlock = Uint8List(512);
-
     void closeLater(StreamController<Object?> controller) {
       controller.onCancel = () => fail('Should not cancel stream subscription');
-
       Timer.run(() {
         // Calling close() implicitly cancels the stream subscription, we only
         // want to ensure that the reader is not doing that.
         controller.onCancel = null;
-        expect(controller.hasListener, isTrue,
-            reason: 'Should have a listener');
-
+        expect(controller.hasListener, isTrue, reason: 'Should have a listener');
         controller.close();
       });
     }
@@ -135,47 +108,35 @@ void main() {
         ..add(emptyBlock)
         // illegal content after end marker
         ..add(Uint8List.fromList([0, 1, 2, 3]));
-
       // The reader checks for empty data in chunks, so we timeout if the stream
       // goes stale.
       Timer.run(input.close);
-
       final reader = TarReader(input.stream, disallowTrailingData: true);
       await expectLater(reader.moveNext(), throwsA(isA<TarException>()));
-      expect(input.hasListener, isFalse,
-          reason: 'Should have cancelled subscription after error.');
+      expect(input.hasListener, isFalse, reason: 'Should have cancelled subscription after error.');
     });
-
     test('does not throw or cancel if the stream ends as expected', () {
-      final input = StreamController<Uint8List>()
-        ..add(emptyBlock)
-        ..add(emptyBlock);
+      final input = StreamController<Uint8List>()..add(emptyBlock)..add(emptyBlock);
       closeLater(input);
-
       final reader = TarReader(input.stream, disallowTrailingData: true);
       expectLater(reader.moveNext(), completion(isFalse));
     });
-
     test('does not throw or cancel when there are many empty blocks', () {
       final input = StreamController<Uint8List>();
       for (var i = 0; i < 100; i++) {
         input.add(emptyBlock);
       }
       closeLater(input);
-
       final reader = TarReader(input.stream, disallowTrailingData: true);
       expectLater(reader.moveNext(), completion(isFalse));
     });
-
     test('does not throw or cancel if the stream ends without marker', () {
       final input = StreamController<Uint8List>();
       closeLater(input);
-
       final reader = TarReader(input.stream, disallowTrailingData: true);
       expectLater(reader.moveNext(), completion(isFalse));
     });
   });
-
   group('tests from dart-neats PR', () {
     Stream<List<int>> open(String name) {
       return File('reference/neats_test/$name').openRead();
@@ -807,36 +768,29 @@ void main() {
         ]
       }
     ];
-
-    Matcher matchesHeader(TarHeader expected) {
-      return isA<TarHeader>()
-          .having((e) => e.name, 'name', expected.name)
-          .having((e) => e.modified, 'modified', expected.modified)
-          .having((e) => e.linkName, 'linkName', expected.linkName)
-          .having((e) => e.mode, 'mode', expected.mode)
-          .having((e) => e.size, 'size', expected.size)
-          .having((e) => e.userName, 'userName', expected.userName)
-          .having((e) => e.userId, 'userId', expected.userId)
-          .having((e) => e.groupId, 'groupId', expected.groupId)
-          .having((e) => e.groupName, 'groupName', expected.groupName)
-          .having((e) => e.accessed, 'accessed', expected.accessed)
-          .having((e) => e.changed, 'changed', expected.changed)
-          .having((e) => e.devMajor, 'devMajor', expected.devMajor)
-          .having((e) => e.devMinor, 'devMinor', expected.devMinor)
-          .having((e) => e.format, 'format', expected.format)
-          .having((e) => e.typeFlag, 'typeFlag', expected.typeFlag);
-    }
-
+    Matcher matchesHeader(TarHeader expected) => isA<TarHeader>()
+        .having((e) => e.name, 'name', expected.name)
+        .having((e) => e.modified, 'modified', expected.modified)
+        .having((e) => e.linkName, 'linkName', expected.linkName)
+        .having((e) => e.mode, 'mode', expected.mode)
+        .having((e) => e.size, 'size', expected.size)
+        .having((e) => e.userName, 'userName', expected.userName)
+        .having((e) => e.userId, 'userId', expected.userId)
+        .having((e) => e.groupId, 'groupId', expected.groupId)
+        .having((e) => e.groupName, 'groupName', expected.groupName)
+        .having((e) => e.accessed, 'accessed', expected.accessed)
+        .having((e) => e.changed, 'changed', expected.changed)
+        .having((e) => e.devMajor, 'devMajor', expected.devMajor)
+        .having((e) => e.devMinor, 'devMinor', expected.devMinor)
+        .having((e) => e.format, 'format', expected.format)
+        .having((e) => e.typeFlag, 'typeFlag', expected.typeFlag);
     for (final testInputs in tests) {
       test('${testInputs['file']}', () async {
-        final tarReader = TarReader(open(testInputs['file']! as String),
-            maxSpecialFileSize: 16000);
-
+        final tarReader = TarReader(open(testInputs['file']! as String), maxSpecialFileSize: 16000);
         if (testInputs['error'] == true) {
           expect(tarReader.moveNext(), throwsFormatException);
         } else {
           final expectedHeaders = testInputs['headers']! as List<TarHeader>;
-
           for (var i = 0; i < expectedHeaders.length; i++) {
             expect(await tarReader.moveNext(), isTrue);
             expect(tarReader.current.header, matchesHeader(expectedHeaders[i]));
@@ -845,7 +799,6 @@ void main() {
         }
       });
     }
-
     test('reader procudes an empty stream if the entry has no size', () async {
       final reader = TarReader(open('trailing-slash.tar'));
       while (await reader.moveNext()) {
@@ -853,51 +806,37 @@ void main() {
       }
     });
   });
-
   test('does not read large headers', () {
-    final reader =
-        TarReader(File('reference/headers/evil_large_header.tar').openRead());
-
+    final reader = TarReader(File('reference/headers/evil_large_header.tar').openRead());
     expect(
       reader.moveNext(),
       throwsA(
-        isFormatException.having((e) => e.message, 'message',
-            contains('hidden entry with an invalid size')),
+        isFormatException.having((e) => e.message, 'message', contains('hidden entry with an invalid size')),
       ),
     );
   });
-
   group('throws on unexpected EoF', () {
-    final expectedException = isA<TarException>()
-        .having((e) => e.message, 'message', contains('Unexpected end'));
-
+    final expectedException = isA<TarException>().having((e) => e.message, 'message', contains('Unexpected end'));
     test('at header', () {
-      final reader =
-          TarReader(File('reference/bad/truncated_in_header.tar').openRead());
+      final reader = TarReader(File('reference/bad/truncated_in_header.tar').openRead());
       expect(reader.moveNext(), throwsA(expectedException));
     });
-
     test('in content', () {
-      final reader =
-          TarReader(File('reference/bad/truncated_in_body.tar').openRead());
+      final reader = TarReader(File('reference/bad/truncated_in_body.tar').openRead());
       expect(reader.moveNext(), throwsA(expectedException));
     });
   });
-
   group('PAX headers', () {
     test('locals overrwrite globals', () {
       final header = PaxHeaders()
         ..newGlobals({'foo': 'foo', 'bar': 'bar'})
         ..newLocals({'foo': 'local'});
-
       expect(header.keys, containsAll(<String>['foo', 'bar']));
       expect(header['foo'], 'local');
     });
-
     group('parse', () {
       final mediumName = 'CD' * 50;
       final longName = 'AB' * 100;
-
       final tests = [
         ['6 k=v\n\n', 'k', 'v', true],
         ['19 path=/etc/hosts\n', 'path', '/etc/hosts', true],
@@ -917,25 +856,20 @@ void main() {
         ['3 somelongkey=\n', '', '', false],
         ['50 tooshort=\n', '', '', false],
       ];
-
       for (var i = 0; i < tests.length; i++) {
         final input = tests[i];
-
         test('parsePax #$i', () {
           final headers = PaxHeaders();
-
           final raw = utf8.encode(input[0] as String);
           final key = input[1];
           final value = input[2];
           final isValid = input[3] as bool;
-
           if (isValid) {
             headers.readPaxHeaders(raw, false, ignoreUnknown: false);
             expect(headers.keys, [key]);
             expect(headers[key], value);
           } else {
-            expect(() => headers.readPaxHeaders(raw, false),
-                throwsA(isA<TarException>()));
+            expect(() => headers.readPaxHeaders(raw, false), throwsA(isA<TarException>()));
           }
         });
       }
@@ -945,14 +879,11 @@ void main() {
 
 Future<void> _testWith(String file, {bool ignoreLongFileName = false}) async {
   final entries = <String, Uint8List>{};
-
   await TarReader.forEach(File(file).openRead(), (entry) async {
     entries[entry.name] = await entry.contents.readFully();
   });
-
   final testEntry = entries['reference/res/test.txt']!;
   expect(utf8.decode(testEntry), 'Test file content!\n');
-
   if (!ignoreLongFileName) {
     final longName = entries['reference/res/'
         'subdirectory_with_a_long_name/'
@@ -964,7 +895,6 @@ Future<void> _testWith(String file, {bool ignoreLongFileName = false}) async {
 Future<void> _testLargeFile(String file) async {
   final reader = TarReader(File(file).openRead());
   await reader.moveNext();
-
   expect(reader.current.size, 9663676416);
 }
 

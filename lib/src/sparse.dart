@@ -1,6 +1,6 @@
-import 'package:async/async.dart';
 import 'package:meta/meta.dart';
 
+import 'chunked_stream_reader.dart';
 import 'exception.dart';
 import 'utils.dart';
 
@@ -13,7 +13,7 @@ class SparseEntry {
   final int offset;
   final int length;
 
-  SparseEntry(this.offset, this.length);
+  const SparseEntry(this.offset, this.length);
 
   int get end => offset + length;
 
@@ -21,11 +21,7 @@ class SparseEntry {
   String toString() => 'offset: $offset, length $length';
 
   @override
-  bool operator ==(Object? other) {
-    if (other is! SparseEntry) return false;
-
-    return offset == other.offset && length == other.length;
-  }
+  bool operator ==(Object? other) => other is SparseEntry && offset == other.offset && length == other.length;
 
   @override
   int get hashCode => offset ^ length;
@@ -34,61 +30,54 @@ class SparseEntry {
 /// Generates a stream of the sparse file contents of size [size], given
 /// [sparseHoles] and the raw content in [source].
 @internal
-Stream<List<int>> sparseStream(
-    Stream<List<int>> source, List<SparseEntry> sparseHoles, int size) {
+Stream<List<int>> sparseStream(Stream<List<int>> source, List<SparseEntry> sparseHoles, int size) {
   if (sparseHoles.isEmpty) {
     return ChunkedStreamReader(source).readStream(size);
+  } else {
+    return _sparseStream(source, sparseHoles, size);
   }
-
-  return _sparseStream(source, sparseHoles, size);
 }
 
 /// Generates a stream of the sparse file contents of size [size], given
 /// [sparseHoles] and the raw content in [source].
 ///
 /// [sparseHoles] has to be non-empty.
-Stream<List<int>> _sparseStream(
-    Stream<List<int>> source, List<SparseEntry> sparseHoles, int size) async* {
+Stream<List<int>> _sparseStream(Stream<List<int>> source, List<SparseEntry> sparseHoles, int size) async* {
   // Current logical position in sparse file.
   var position = 0;
-
   // Index of the next sparse hole in [sparseHoles] to be processed.
   var sparseHoleIndex = 0;
-
   // Iterator through [source] to obtain the data bytes.
   final iterator = ChunkedStreamReader(source);
-
   while (position < size) {
     // Yield all the necessary sparse holes.
-    while (sparseHoleIndex < sparseHoles.length &&
-        sparseHoles[sparseHoleIndex].offset == position) {
+    while (sparseHoleIndex < sparseHoles.length && sparseHoles[sparseHoleIndex].offset == position) {
       final sparseHole = sparseHoles[sparseHoleIndex];
       yield* zeroes(sparseHole.length);
       position += sparseHole.length;
       sparseHoleIndex++;
     }
-
-    if (position == size) break;
-
-    /// Yield up to the next sparse hole's offset, or all the way to the end
-    /// if there are no sparse holes left.
-    var yieldTo = size;
-    if (sparseHoleIndex < sparseHoles.length) {
-      yieldTo = sparseHoles[sparseHoleIndex].offset;
+    if (position == size) {
+      break;
+    } else {
+      /// Yield up to the next sparse hole's offset, or all the way to the end
+      /// if there are no sparse holes left.
+      var yieldTo = size;
+      if (sparseHoleIndex < sparseHoles.length) {
+        yieldTo = sparseHoles[sparseHoleIndex].offset;
+      }
+      // Yield data as substream, but make sure that we have enough data.
+      var checkedPosition = position;
+      await for (final chunk in iterator.readStream(yieldTo - position)) {
+        yield chunk;
+        checkedPosition += chunk.length;
+      }
+      if (checkedPosition != yieldTo) {
+        throw const TarException('Invalid sparse data: Unexpected end of input stream');
+      } else {
+        position = yieldTo;
+      }
     }
-
-    // Yield data as substream, but make sure that we have enough data.
-    var checkedPosition = position;
-    await for (final chunk in iterator.readStream(yieldTo - position)) {
-      yield chunk;
-      checkedPosition += chunk.length;
-    }
-
-    if (checkedPosition != yieldTo) {
-      throw TarException('Invalid sparse data: Unexpected end of input stream');
-    }
-
-    position = yieldTo;
   }
 }
 
@@ -98,27 +87,29 @@ Stream<List<int>> _sparseStream(
 bool validateSparseEntries(List<SparseEntry> sparseEntries, int size) {
   // Validate all sparse entries. These are the same checks as performed by
   // the BSD tar utility.
-  if (size < 0) return false;
-
-  SparseEntry? previous;
-
-  for (final current in sparseEntries) {
-    // Negative values are never okay.
-    if (current.offset < 0 || current.length < 0) return false;
-
-    // Integer overflow with large length.
-    if (current.offset + current.length < current.offset) return false;
-
-    // Region extends beyond the actual size.
-    if (current.end > size) return false;
-
-    // Regions cannot overlap and must be in order.
-    if (previous != null && previous.end > current.offset) return false;
-
-    previous = current;
+  if (size < 0) {
+    return false;
+  } else {
+    SparseEntry? previous;
+    for (final current in sparseEntries) {
+      if (current.offset < 0 || current.length < 0) {
+        // Negative values are never okay.
+        return false;
+      } else if (current.offset + current.length < current.offset) {
+        // Integer overflow with large length.
+        return false;
+      } else if (current.end > size) {
+        // Region extends beyond the actual size.
+        return false;
+      } else if (previous != null && previous.end > current.offset) {
+        // Regions cannot overlap and must be in order.
+        return false;
+      } else {
+        previous = current;
+      }
+    }
+    return true;
   }
-
-  return true;
 }
 
 /// Converts a sparse map ([source]) from one form to the other.
@@ -131,17 +122,16 @@ bool validateSparseEntries(List<SparseEntry> sparseEntries, int size) {
 ///	* the endOffset of the last fragment is the total size
 List<SparseEntry> invertSparseEntries(List<SparseEntry> source, int size) {
   final result = <SparseEntry>[];
-  var previous = SparseEntry(0, 0);
+  var previous = const SparseEntry(0, 0);
   for (final current in source) {
     /// Skip empty fragments
-    if (current.length == 0) continue;
-
-    final newLength = current.offset - previous.offset;
-    if (newLength > 0) {
-      result.add(SparseEntry(previous.offset, newLength));
+    if (current.length != 0) {
+      final newLength = current.offset - previous.offset;
+      if (newLength > 0) {
+        result.add(SparseEntry(previous.offset, newLength));
+      }
+      previous = SparseEntry(current.end, 0);
     }
-
-    previous = SparseEntry(current.end, 0);
   }
   final lastLength = size - previous.offset;
   result.add(SparseEntry(previous.offset, lastLength));
