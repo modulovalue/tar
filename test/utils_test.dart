@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:tar/src/exception.dart';
-import 'package:tar/src/utils.dart';
+import 'package:tar/exception.dart';
+import 'package:tar/utils.dart';
 import 'package:test/test.dart';
 
 // ignore_for_file: avoid_js_rounded_ints

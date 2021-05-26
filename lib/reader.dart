@@ -5,7 +5,6 @@ import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 
-import 'charcodes.dart';
 import 'chunked_stream_reader.dart';
 import 'constants.dart';
 import 'entry.dart';

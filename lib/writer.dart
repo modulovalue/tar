@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'charcodes.dart';
 import 'constants.dart';
 import 'entry.dart';
 import 'format.dart';

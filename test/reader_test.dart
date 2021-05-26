@@ -4,9 +4,12 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:async/async.dart';
-import 'package:tar/src/reader.dart';
-import 'package:tar/src/utils.dart';
-import 'package:tar/tar.dart';
+import 'package:tar/constants.dart';
+import 'package:tar/exception.dart';
+import 'package:tar/format.dart';
+import 'package:tar/header.dart';
+import 'package:tar/reader.dart';
+import 'package:tar/utils.dart';
 import 'package:test/test.dart';
 
 void main() {

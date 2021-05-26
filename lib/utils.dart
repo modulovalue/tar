@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'charcodes.dart';
 import 'constants.dart';
 import 'exception.dart';
 

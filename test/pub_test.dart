@@ -5,7 +5,7 @@
 // be able to read every package version ever uploaded to pub.
 import 'dart:io';
 
-import 'package:tar/tar.dart';
+import 'package:tar/reader.dart';
 import 'package:test/test.dart';
 
 void main() {

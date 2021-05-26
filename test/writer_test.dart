@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:tar/tar.dart' as tar;
+import 'package:tar/entry.dart';
+import 'package:tar/header.dart';
+import 'package:tar/writer.dart';
 import 'package:test/test.dart';
 
 import 'system_tar.dart';
@@ -11,11 +13,11 @@ const tenGbSize = oneMbSize * 1024 * 10;
 
 void main() {
   group('writes long file names', () {
-    for (final style in tar.OutputFormat.values) {
+    for (final style in OutputFormat.values) {
       test(style.toString(), () async {
         final name = '${'very' * 30} long name.txt';
-        final withLongName = tar.TarEntry.data(
-          tar.TarHeader(name: name, mode: 0, size: 0),
+        final withLongName = TarEntry.data(
+          TarHeader(name: name, mode: 0, size: 0),
           Uint8List(0),
         );
         final proc = await writeToTar(
@@ -29,8 +31,8 @@ void main() {
   }, testOn: '!windows');
   test('writes headers', () async {
     final date = DateTime.parse('2020-12-30 12:34');
-    final entry = tar.TarEntry.data(
-      tar.TarHeader(
+    final entry = TarEntry.data(
+      TarHeader(
         name: 'hello_dart.txt',
         mode: int.parse('744', radix: 8),
         size: 0,
@@ -58,8 +60,8 @@ void main() {
   test('writes huge files', () async {
     final oneMb = Uint8List(oneMbSize);
     const count = tenGbSize ~/ oneMbSize;
-    final entry = tar.TarEntry(
-      tar.TarHeader(
+    final entry = TarEntry(
+      TarHeader(
         name: 'file.blob',
         mode: 0,
         size: tenGbSize,
@@ -70,16 +72,16 @@ void main() {
     expect(proc.lines, emits(contains(tenGbSize.toString())));
   }, testOn: '!windows');
   group('refuses to write files with OutputFormat.gnu', () {
-    void shouldThrow(tar.TarEntry entry) {
-      final output = tar.tarWritingSink(_NullStreamSink(), format: tar.OutputFormat.gnuLongName);
+    void shouldThrow(TarEntry entry) {
+      final output = tarWritingSink(_NullStreamSink(), format: OutputFormat.gnuLongName);
       expect(Stream.value(entry).pipe(output), throwsA(isUnsupportedError));
     }
 
     test('when they are too large', () {
       final oneMb = Uint8List(oneMbSize);
       const count = tenGbSize ~/ oneMbSize;
-      final entry = tar.TarEntry(
-        tar.TarHeader(
+      final entry = TarEntry(
+        TarHeader(
           name: 'file.blob',
           mode: 0,
           size: tenGbSize,
@@ -90,8 +92,8 @@ void main() {
     });
     test('when they use long user names', () {
       shouldThrow(
-        tar.TarEntry.data(
-          tar.TarHeader(
+        TarEntry.data(
+          TarHeader(
             name: 'file.txt',
             userName: 'this name is longer than 32 chars, which is not allowed',
           ),

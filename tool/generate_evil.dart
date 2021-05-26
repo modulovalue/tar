@@ -1,7 +1,10 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:tar/tar.dart';
+import 'package:tar/constants.dart';
+import 'package:tar/entry.dart';
+import 'package:tar/header.dart';
+import 'package:tar/writer.dart';
 
 Future<void> main() async {
   // Generate tar file claiming to have a 7 GB header

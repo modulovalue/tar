@@ -1,12 +1,11 @@
-@TestOn('linux') // We currently use gnu tar to create test inputs
+@TestOn('linux')
 import 'dart:io';
-
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:async/async.dart';
-import 'package:tar/src/sparse.dart';
-import 'package:tar/tar.dart';
+import 'package:tar/reader.dart';
+import 'package:tar/sparse.dart';
 import 'package:test/test.dart';
 
 import 'system_tar.dart';
@@ -93,8 +92,7 @@ void main() {
   late String baseDirectory;
   String path(String fileName) => '$baseDirectory/$fileName';
   setUpAll(() async {
-    baseDirectory = Directory.systemTemp.path +
-        '/tar_test/${DateTime.now().millisecondsSinceEpoch}';
+    baseDirectory = Directory.systemTemp.path + '/tar_test/${DateTime.now().millisecondsSinceEpoch}';
     await Directory(baseDirectory).create(recursive: true);
     for (final entry in testFiles.entries) {
       final name = entry.key;
@@ -111,13 +109,17 @@ void main() {
   tearDownAll(() {
     Directory(baseDirectory).delete(recursive: true);
   });
-  Future<void> testSubset(
-      Iterable<String> keys, String format, String? sparse) {
+  Future<void> testSubset(Iterable<String> keys, String format, String? sparse) {
     final files = {for (final file in keys) file: path(file)};
-    final tar = createTarStream(files.keys,
-        baseDir: baseDirectory, archiveFormat: format, sparseVersion: sparse);
+    final tar = createTarStream(
+      files.keys,
+      baseDir: baseDirectory,
+      archiveFormat: format,
+      sparseVersion: sparse,
+    );
     return validate(tar, files);
   }
+
   for (final format in ['gnu', 'v7', 'oldgnu', 'posix', 'ustar']) {
     group('reads large files in $format', () {
       test('single file', () {
@@ -128,7 +130,6 @@ void main() {
       });
     });
   }
-
   for (final format in ['gnu', 'posix']) {
     for (final sparseVersion in ['0.0', '0.1', '1.0']) {
       group('sparse format $format, version $sparseVersion', () {
@@ -286,13 +287,11 @@ void main() {
     for (var i = 0; i < tests.length; i++) {
       final testcase = tests[i];
       test('validateSparseEntries #$i', () {
-        expect(validateSparseEntries(testcase.input, testcase.size),
-            testcase.isValid);
+        expect(validateSparseEntries(testcase.input, testcase.size), testcase.isValid);
       });
       if (testcase.isValid) {
         test('invertSparseEntries #$i', () {
-          expect(invertSparseEntries(testcase.input, testcase.size),
-              testcase.inverted);
+          expect(invertSparseEntries(testcase.input, testcase.size), testcase.inverted);
         });
       }
     }

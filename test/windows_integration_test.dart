@@ -1,7 +1,9 @@
 @TestOn('windows')
 import 'dart:io';
 
-import 'package:tar/tar.dart';
+import 'package:tar/entry.dart';
+import 'package:tar/header.dart';
+import 'package:tar/writer.dart';
 import 'package:test/test.dart';
 
 import 'system_tar.dart';

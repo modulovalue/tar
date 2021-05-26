@@ -1,7 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:tar/tar.dart';
+import 'package:tar/constants.dart';
+import 'package:tar/entry.dart';
+import 'package:tar/header.dart';
+import 'package:tar/reader.dart';
+import 'package:tar/writer.dart';
 
 Future<void> main() async {
   // Start reading a tar file
@@ -19,10 +23,11 @@ Future<void> main() async {
   await Stream<TarEntry>.value(
     TarEntry.data(
       TarHeader(
-          name: 'hello_dart.txt',
-          mode: int.parse('644', radix: 8),
-          userName: 'Dart',
-          groupName: 'Dartgroup'),
+        name: 'hello_dart.txt',
+        mode: int.parse('644', radix: 8),
+        userName: 'Dart',
+        groupName: 'Dartgroup',
+      ),
       utf8.encode('Hello world'),
     ),
   )

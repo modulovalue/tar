@@ -4,7 +4,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:tar/tar.dart' as tar;
+import 'package:tar/entry.dart';
+import 'package:tar/writer.dart';
 import 'package:test/test.dart';
 
 Future<Process> startTar(List<String> args, {String? baseDir}) {
@@ -38,9 +39,9 @@ Stream<List<int>> createTarStream(Iterable<String> files, {String archiveFormat 
   yield* tar.stdout;
 }
 
-Future<Process> writeToTar(List<String> args, Stream<tar.TarEntry> entries, {tar.OutputFormat format = tar.OutputFormat.pax}) async {
+Future<Process> writeToTar(List<String> args, Stream<TarEntry> entries, {OutputFormat format = OutputFormat.pax}) async {
   final proc = await startTar(args);
-  await entries.pipe(tar.tarWritingSink(proc.stdin, format: format));
+  await entries.pipe(tarWritingSink(proc.stdin, format: format));
   return proc;
 }
 
