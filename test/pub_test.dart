@@ -5,7 +5,7 @@
 // be able to read every package version ever uploaded to pub.
 import 'dart:io';
 
-import 'package:tar/reader.dart';
+import 'package:tar/decoder/impl/tar_decoder.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -19,7 +19,7 @@ void main() {
     test('can read $package', () async {
       final file = File('reference/pub/$package.tar.gz');
       final tarStream = file.openRead().transform(gzip.decoder);
-      final reader = TarReader(tarStream, disallowTrailingData: true);
+      final reader = TarDecoderImpl(tarStream, disallowTrailingData: true);
       while (await reader.moveNext()) {}
     });
   }

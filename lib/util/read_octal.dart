@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import '../constants.dart';
-import '../tar_exception.dart';
+import '../base/constants.dart';
+import '../base/tar_exception.dart';
 
 /// Parse an octal string encoded from index [offset] with the maximum length
 /// [length].

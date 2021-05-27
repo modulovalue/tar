@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:tar/tar_exception.dart';
+import 'package:tar/base/tar_exception.dart';
 import 'package:tar/util/parse_pax_time.dart';
 import 'package:tar/util/read_numeric.dart';
 import 'package:tar/util/read_string.dart';

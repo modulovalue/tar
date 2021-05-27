@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:tar/encoder/impl/tar_encoder.dart';
+import 'package:tar/encoder/interface/tar_encoder.dart';
 import 'package:tar/entry/impl/entry.dart';
 import 'package:tar/entry/interface/entry.dart';
 import 'package:tar/header/impl/header.dart';
-import 'package:tar/writer.dart';
 import 'package:test/test.dart';
 
 import 'system_tar.dart';
@@ -74,7 +75,7 @@ void main() {
   }, testOn: '!windows');
   group('refuses to write files with OutputFormat.gnu', () {
     void shouldThrow(TarEntry entry) {
-      final output = tarWritingSink(_NullStreamSink(), format: OutputFormat.gnuLongName);
+      final output = TarEncoderSinkImpl(_NullStreamSink(), OutputFormat.gnuLongName);
       expect(Stream.value(entry).pipe(output), throwsA(isUnsupportedError));
     }
 

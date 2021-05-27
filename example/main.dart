@@ -1,21 +1,22 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:tar/constants.dart';
+import 'package:tar/decoder/impl/tar_decoder.dart';
+import 'package:tar/encoder/impl/tar_encoder.dart';
+import 'package:tar/encoder/interface/tar_encoder.dart';
 import 'package:tar/entry/impl/entry.dart';
 import 'package:tar/entry/interface/entry.dart';
 import 'package:tar/header/impl/header.dart';
-import 'package:tar/reader.dart';
-import 'package:tar/writer.dart';
+import 'package:tar/type_flag/impl/flags.dart';
 
 Future<void> main() async {
   // Start reading a tar file
-  final reader = TarReader(File('reference/gnu.tar').openRead());
+  final reader = TarDecoderImpl(File('reference/gnu.tar').openRead());
   while (await reader.moveNext()) {
     final header = reader.current.header;
     print('${header.name}: ');
     // Print the output if it's a regular file
-    if (header.typeFlag == TypeFlag.reg) {
+    if (header.typeFlag == TypeFlags.reg) {
       await reader.current.contents.transform(utf8.decoder).forEach(print);
     }
   }
@@ -35,7 +36,7 @@ Future<void> main() async {
     ),
   )
       // transform tar entries back to a byte stream
-      .transform(tarWriter)
+      .transform(const TarEncoderTransformerImpl(OutputFormat.pax))
       // and then write that to the file
       .pipe(output);
 }

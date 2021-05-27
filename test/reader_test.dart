@@ -3,44 +3,60 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:tar/constants.dart';
-import 'package:tar/tar_exception.dart';
+import 'package:tar/base/tar_exception.dart';
+import 'package:tar/decoder/impl/tar_decoder.dart';
 import 'package:tar/format/impl/formats.dart';
 import 'package:tar/header/impl/header.dart';
+import 'package:tar/header/impl/pay_headers.dart';
 import 'package:tar/header/interface/header.dart';
-import 'package:tar/reader.dart';
+import 'package:tar/type_flag/impl/flags.dart';
 import 'package:tar/util/ms_since_epoch.dart';
 import 'package:tar/util/us_since_epoch.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('POSIX.1-2001', () {
-    test('reads files', () => _testWith('reference/posix.tar'));
-    test('reads large files', () => _testLargeFile('reference/headers/large_posix.tar'));
+    test(
+      'reads files',
+      () => _testWith('reference/posix.tar'),
+    );
+    test(
+      'reads large files',
+      () => _testLargeFile('reference/headers/large_posix.tar'),
+    );
   });
-  test('(new) GNU Tar format', () => _testWith('reference/gnu.tar'));
-  test('ustar', () => _testWith('reference/ustar.tar'));
-  test('v7', () => _testWith('reference/v7.tar', ignoreLongFileName: true));
+  test(
+    '(new) GNU Tar format',
+    () => _testWith('reference/gnu.tar'),
+  );
+  test(
+    'ustar',
+    () => _testWith('reference/ustar.tar'),
+  );
+  test(
+    'v7',
+    () => _testWith('reference/v7.tar', ignoreLongFileName: true),
+  );
   test('can skip tar files', () async {
     final input = File('reference/posix.tar').openRead();
-    final reader = TarReader(input);
+    final reader = TarDecoderImpl(input);
     expect(await reader.moveNext(), isTrue);
     expect(await reader.moveNext(), isTrue);
     expect(reader.current.name, 'reference/res/subdirectory_with_a_long_name/');
   });
   test('getters throw before moveNext() is called', () {
-    final reader = TarReader(const Stream<Never>.empty());
+    final reader = TarDecoderImpl(const Stream<Never>.empty());
     expect(() => reader.current, throwsStateError);
   });
   test("can't use moveNext() concurrently", () {
-    final reader = TarReader(Stream.fromFuture(Future.delayed(const Duration(seconds: 2), () => <int>[])));
+    final reader = TarDecoderImpl(Stream.fromFuture(Future.delayed(const Duration(seconds: 2), () => <int>[])));
     expect(reader.moveNext(), completion(isFalse));
     expect(() => reader.moveNext(), throwsStateError);
     return reader.cancel();
   });
   test("can't use moveNext() while a stream is active", () async {
     final input = File('reference/posix.tar').openRead();
-    final reader = TarReader(input);
+    final reader = TarDecoderImpl(input);
     expect(await reader.moveNext(), isTrue);
     reader.current.contents.listen((event) {}).pause();
     expect(() => reader.moveNext(), throwsStateError);
@@ -48,7 +64,7 @@ void main() {
   });
   test("can't use moveNext() after canceling the reader", () async {
     final input = File('reference/posix.tar').openRead();
-    final reader = TarReader(input);
+    final reader = TarDecoderImpl(input);
     await reader.cancel();
     expect(() => reader.moveNext(), throwsStateError);
   });
@@ -60,7 +76,7 @@ void main() {
       controller.onListen = () {
         controller..add(zeroBlock)..add(zeroBlock)..add(zeroBlock);
       };
-      final reader = TarReader(controller.stream);
+      final reader = TarDecoderImpl(controller.stream);
       await expectLater(reader.moveNext(), completion(isFalse));
       expect(controller.hasListener, isFalse);
       await controller.close();
@@ -70,7 +86,7 @@ void main() {
       controller.onListen = () {
         controller.addError('foo');
       };
-      final reader = TarReader(controller.stream);
+      final reader = TarDecoderImpl(controller.stream);
       await expectLater(reader.moveNext(), throwsA('foo'));
       expect(controller.hasListener, isFalse);
       await controller.close();
@@ -85,7 +101,7 @@ void main() {
         await controller.addStream(iterator.readStream(515));
         controller.addError('foo');
       };
-      final reader = TarReader(controller.stream);
+      final reader = TarDecoderImpl(controller.stream);
       await expectLater(reader.moveNext(), completion(isTrue));
       await expectLater(reader.current.contents, emitsThrough(emitsError('foo')));
       expect(controller.hasListener, isFalse);
@@ -115,14 +131,14 @@ void main() {
       // The reader checks for empty data in chunks, so we timeout if the stream
       // goes stale.
       Timer.run(input.close);
-      final reader = TarReader(input.stream, disallowTrailingData: true);
+      final reader = TarDecoderImpl(input.stream, disallowTrailingData: true);
       await expectLater(reader.moveNext(), throwsA(isA<TarException>()));
       expect(input.hasListener, isFalse, reason: 'Should have cancelled subscription after error.');
     });
     test('does not throw or cancel if the stream ends as expected', () {
       final input = StreamController<Uint8List>()..add(emptyBlock)..add(emptyBlock);
       closeLater(input);
-      final reader = TarReader(input.stream, disallowTrailingData: true);
+      final reader = TarDecoderImpl(input.stream, disallowTrailingData: true);
       expectLater(reader.moveNext(), completion(isFalse));
     });
     test('does not throw or cancel when there are many empty blocks', () {
@@ -131,13 +147,13 @@ void main() {
         input.add(emptyBlock);
       }
       closeLater(input);
-      final reader = TarReader(input.stream, disallowTrailingData: true);
+      final reader = TarDecoderImpl(input.stream, disallowTrailingData: true);
       expectLater(reader.moveNext(), completion(isFalse));
     });
     test('does not throw or cancel if the stream ends without marker', () {
       final input = StreamController<Uint8List>();
       closeLater(input);
-      final reader = TarReader(input.stream, disallowTrailingData: true);
+      final reader = TarDecoderImpl(input.stream, disallowTrailingData: true);
       expectLater(reader.moveNext(), completion(isFalse));
     });
   });
@@ -157,7 +173,7 @@ void main() {
             groupId: 1000,
             size: 3,
             modified: millisecondsSinceEpoch(1597755680000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'garett',
             groupName: 'garett',
             format: TarFormats.gnu,
@@ -169,7 +185,7 @@ void main() {
             groupId: 1000,
             size: 8,
             modified: millisecondsSinceEpoch(1597755958000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'garett',
             groupName: 'garett',
             format: TarFormats.gnu,
@@ -186,7 +202,7 @@ void main() {
             groupId: 1000,
             size: 200,
             modified: millisecondsSinceEpoch(1597756151000),
-            typeFlag: TypeFlag.gnuSparse,
+            typeFlag: TypeFlags.gnuSparse,
             userName: 'jonas',
             groupName: 'jonas',
             devMajor: 0,
@@ -200,7 +216,7 @@ void main() {
             groupId: 1000,
             size: 200,
             modified: millisecondsSinceEpoch(1597756151000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'jonas',
             groupName: 'jonas',
             devMajor: 0,
@@ -214,7 +230,7 @@ void main() {
             groupId: 1000,
             size: 200,
             modified: millisecondsSinceEpoch(1597756151000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'jonas',
             groupName: 'jonas',
             devMajor: 0,
@@ -228,7 +244,7 @@ void main() {
             groupId: 1000,
             size: 200,
             modified: millisecondsSinceEpoch(1597756151000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'jonas',
             groupName: 'jonas',
             devMajor: 0,
@@ -242,7 +258,7 @@ void main() {
             groupId: 1000,
             size: 4,
             modified: millisecondsSinceEpoch(1597756151000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'jonas',
             groupName: 'jonas',
             devMajor: 0,
@@ -261,7 +277,7 @@ void main() {
             groupId: 1000,
             size: 3,
             modified: millisecondsSinceEpoch(1597755680000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'garett',
             groupName: 'garett',
             accessed: millisecondsSinceEpoch(1597755680000),
@@ -275,7 +291,7 @@ void main() {
             groupId: 1000,
             size: 7,
             modified: millisecondsSinceEpoch(1597755958000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'garett',
             groupName: 'garett',
             accessed: millisecondsSinceEpoch(1597755958000),
@@ -294,7 +310,7 @@ void main() {
             groupId: 1000,
             size: 3,
             modified: millisecondsSinceEpoch(1597755680000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             format: TarFormats.v7,
           ),
           TarHeaderImpl(
@@ -304,7 +320,7 @@ void main() {
             groupId: 1000,
             size: 8,
             modified: millisecondsSinceEpoch(1597755958000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             format: TarFormats.v7,
           )
         ],
@@ -319,7 +335,7 @@ void main() {
             groupId: 1000,
             size: 3,
             modified: millisecondsSinceEpoch(1597755680000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'garett',
             groupName: 'garett',
             format: TarFormats.ustar,
@@ -331,7 +347,7 @@ void main() {
             groupId: 1000,
             size: 8,
             modified: millisecondsSinceEpoch(1597755958000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'garett',
             groupName: 'garett',
             format: TarFormats.ustar,
@@ -353,7 +369,7 @@ void main() {
             modified: microsecondsSinceEpoch(1597823492427388),
             changed: microsecondsSinceEpoch(1597823492427388),
             accessed: microsecondsSinceEpoch(1597823492427388),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             format: TarFormats.pax,
           ),
           TarHeaderImpl(
@@ -367,7 +383,7 @@ void main() {
             modified: microsecondsSinceEpoch(1597823492427388),
             changed: microsecondsSinceEpoch(1597823492427388),
             accessed: microsecondsSinceEpoch(1597823492427388),
-            typeFlag: TypeFlag.symlink,
+            typeFlag: TypeFlags.symlink,
             linkName:
                 '123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100',
             format: TarFormats.pax,
@@ -394,7 +410,7 @@ void main() {
             groupId: 1000,
             size: 999,
             modified: millisecondsSinceEpoch(1597755680000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'jonasfj',
             groupName: 'jfj',
             format: TarFormats.pax,
@@ -405,7 +421,7 @@ void main() {
         'file': 'pax-records.tar',
         'headers': [
           TarHeaderImpl(
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             size: 0,
             name: 'pax-records',
             mode: 416,
@@ -425,7 +441,7 @@ void main() {
             groupId: 0,
             size: 3,
             modified: millisecondsSinceEpoch(1597755680000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'garett',
             groupName: 'garett',
             devMajor: 0,
@@ -439,7 +455,7 @@ void main() {
             groupId: 1000,
             size: 7,
             modified: millisecondsSinceEpoch(1597755958000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'garett',
             groupName: 'garett',
             devMajor: 0,
@@ -458,7 +474,7 @@ void main() {
             groupId: 10,
             size: 5,
             modified: microsecondsSinceEpoch(1597823492427388),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'garett',
             groupName: 'tok',
             accessed: microsecondsSinceEpoch(1597823492427388),
@@ -472,7 +488,7 @@ void main() {
             groupId: 10,
             size: 11,
             modified: microsecondsSinceEpoch(1597823492427388),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'garett',
             groupName: 'tok',
             accessed: microsecondsSinceEpoch(1597823492427388),
@@ -492,7 +508,7 @@ void main() {
             userId: 1000,
             groupId: 1000,
             modified: millisecondsSinceEpoch(1597756829000),
-            typeFlag: TypeFlag.symlink,
+            typeFlag: TypeFlags.symlink,
             format: TarFormats.gnu,
           )
         ],
@@ -512,7 +528,7 @@ void main() {
             groupId: 1000,
             size: 14,
             modified: millisecondsSinceEpoch(1597755680000),
-            typeFlag: TypeFlag.vendor,
+            typeFlag: TypeFlags.vendor,
             userName: 'fizz',
             groupName: 'foobar',
             accessed: millisecondsSinceEpoch(1597755680000),
@@ -526,7 +542,7 @@ void main() {
             groupId: 1000,
             size: 64,
             modified: millisecondsSinceEpoch(1597755688000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'fizz',
             groupName: 'foobar',
             accessed: millisecondsSinceEpoch(1597759641000),
@@ -540,7 +556,7 @@ void main() {
             groupId: 1000,
             size: 536870912,
             modified: millisecondsSinceEpoch(1597755776000),
-            typeFlag: TypeFlag.gnuSparse,
+            typeFlag: TypeFlags.gnuSparse,
             userName: 'fizz',
             groupName: 'foobar',
             accessed: millisecondsSinceEpoch(1597755703000),
@@ -558,7 +574,7 @@ void main() {
             size: 0,
             linkName: 'bzzt/bzzt/bzzt/bzzt/bzzt/baz',
             modified: millisecondsSinceEpoch(0),
-            typeFlag: TypeFlag.symlink,
+            typeFlag: TypeFlags.symlink,
             format: TarFormats.pax,
           )
         ]
@@ -576,7 +592,7 @@ void main() {
             userId: 1000,
             groupId: 1000,
             modified: millisecondsSinceEpoch(1597755682000),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             format: TarFormats.gnu,
             userName: 'jensen',
             groupName: 'jensen',
@@ -598,7 +614,7 @@ void main() {
             userId: 525,
             groupId: 600,
             modified: millisecondsSinceEpoch(0),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: '🐻',
             groupName: '🥭',
             format: TarFormats.gnu,
@@ -615,7 +631,7 @@ void main() {
             userId: 1234,
             groupId: 5678,
             modified: millisecondsSinceEpoch(0),
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             userName: 'walnut',
             groupName: 'dust',
             format: TarFormats.gnu,
@@ -660,7 +676,7 @@ void main() {
             name: 'file',
             size: 0,
             mode: 420,
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             modified: millisecondsSinceEpoch(0),
             userName: 'Jonas',
             groupName: 'Google',
@@ -676,7 +692,7 @@ void main() {
         'headers': [
           TarHeaderImpl(
             name: 'nil-sparse-data',
-            typeFlag: TypeFlag.gnuSparse,
+            typeFlag: TypeFlags.gnuSparse,
             userId: 1000,
             groupId: 1000,
             size: 1000,
@@ -691,7 +707,7 @@ void main() {
         'headers': [
           TarHeaderImpl(
             name: 'nil-sparse-hole',
-            typeFlag: TypeFlag.gnuSparse,
+            typeFlag: TypeFlags.gnuSparse,
             size: 1000,
             userId: 1000,
             groupId: 1000,
@@ -706,7 +722,7 @@ void main() {
         'headers': [
           TarHeaderImpl(
             name: 'sparse',
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             size: 1000,
             userId: 1000,
             groupId: 1000,
@@ -721,7 +737,7 @@ void main() {
         'headers': [
           TarHeaderImpl(
             name: 'sparse.txt',
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             size: 1000,
             userId: 1000,
             groupId: 1000,
@@ -734,7 +750,7 @@ void main() {
         'file': 'trailing-slash.tar',
         'headers': [
           TarHeaderImpl(
-            typeFlag: TypeFlag.dir,
+            typeFlag: TypeFlags.dir,
             size: 0,
             name: '987654321/' * 30,
             modified: millisecondsSinceEpoch(0),
@@ -754,7 +770,7 @@ void main() {
             groupId: 89939,
             groupName: 'primarygroup',
             format: TarFormats.pax,
-            typeFlag: TypeFlag.dir,
+            typeFlag: TypeFlags.dir,
             modified: DateTime.utc(2020, 10, 13, 13, 04, 32, 608, 662),
           ),
           TarHeaderImpl(
@@ -766,7 +782,7 @@ void main() {
             groupId: 89939,
             groupName: 'primarygroup',
             format: TarFormats.pax,
-            typeFlag: TypeFlag.reg,
+            typeFlag: TypeFlags.reg,
             modified: DateTime.utc(2020, 10, 13, 13, 05, 12, 105, 884),
           ),
         ]
@@ -790,7 +806,7 @@ void main() {
         .having((e) => e.typeFlag, 'typeFlag', expected.typeFlag);
     for (final testInputs in tests) {
       test('${testInputs['file']}', () async {
-        final tarReader = TarReader(open(testInputs['file']! as String), maxSpecialFileSize: 16000);
+        final tarReader = TarDecoderImpl(open(testInputs['file']! as String), maxSpecialFileSize: 16000);
         if (testInputs['error'] == true) {
           expect(tarReader.moveNext(), throwsFormatException);
         } else {
@@ -804,14 +820,14 @@ void main() {
       });
     }
     test('reader procudes an empty stream if the entry has no size', () async {
-      final reader = TarReader(open('trailing-slash.tar'));
+      final reader = TarDecoderImpl(open('trailing-slash.tar'));
       while (await reader.moveNext()) {
         expect(await reader.current.contents.toList(), isEmpty);
       }
     });
   });
   test('does not read large headers', () {
-    final reader = TarReader(File('reference/headers/evil_large_header.tar').openRead());
+    final reader = TarDecoderImpl(File('reference/headers/evil_large_header.tar').openRead());
     expect(
       reader.moveNext(),
       throwsA(
@@ -820,23 +836,20 @@ void main() {
     );
   });
   group('throws on unexpected EoF', () {
-    final expectedException = isA<TarException>().having((e) => e.message, 'message', contains('Unexpected end'));
     test('at header', () {
-      final reader = TarReader(File('reference/bad/truncated_in_header.tar').openRead());
-      expect(reader.moveNext(), throwsA(expectedException));
+      final reader = TarDecoderImpl(File('reference/bad/truncated_in_header.tar').openRead());
+      expect(reader.moveNext(), throwsA(isA<TarExceptionHeaderUnexpectedEndOfFileImpl>()));
     });
     test('in content', () {
-      final reader = TarReader(File('reference/bad/truncated_in_body.tar').openRead());
-      expect(reader.moveNext(), throwsA(expectedException));
+      final reader = TarDecoderImpl(File('reference/bad/truncated_in_body.tar').openRead());
+      expect(reader.moveNext(), throwsA(isA<TarExceptionHeaderUnexpectedEndOfFileImpl>()));
     });
   });
   group('PAX headers', () {
     test('locals overrwrite globals', () {
-      final header = PaxHeaders()
-        ..newGlobals({'foo': 'foo', 'bar': 'bar'})
-        ..newLocals({'foo': 'local'});
+      final header = PaxHeadersImpl({'foo': 'foo', 'bar': 'bar'}, {'foo': 'local'});
       expect(header.keys, containsAll(<String>['foo', 'bar']));
-      expect(header['foo'], 'local');
+      expect(header.get('foo'), 'local');
     });
     group('parse', () {
       final mediumName = 'CD' * 50;
@@ -863,17 +876,17 @@ void main() {
       for (var i = 0; i < tests.length; i++) {
         final input = tests[i];
         test('parsePax #$i', () {
-          final headers = PaxHeaders();
+          final headers = PaxHeadersImpl.empty();
           final raw = utf8.encode(input[0] as String);
           final key = input[1];
           final value = input[2];
           final isValid = input[3] as bool;
           if (isValid) {
-            headers.readPaxHeaders(raw, false, ignoreUnknown: false);
+            headers.readPaxHeaders(raw, false, false);
             expect(headers.keys, [key]);
-            expect(headers[key], value);
+            expect(headers.get(key), value);
           } else {
-            expect(() => headers.readPaxHeaders(raw, false), throwsA(isA<TarException>()));
+            expect(() => headers.readPaxHeaders(raw, false, true), throwsA(isA<TarException>()));
           }
         });
       }
@@ -883,7 +896,7 @@ void main() {
 
 Future<void> _testWith(String file, {bool ignoreLongFileName = false}) async {
   final entries = <String, Uint8List>{};
-  await TarReader.forEach(File(file).openRead(), (entry) async {
+  await TarDecoderImpl.forEach(File(file).openRead(), (entry) async {
     entries[entry.name] = await entry.contents.readFully();
   });
   final testEntry = entries['reference/res/test.txt']!;
@@ -897,7 +910,7 @@ Future<void> _testWith(String file, {bool ignoreLongFileName = false}) async {
 }
 
 Future<void> _testLargeFile(String file) async {
-  final reader = TarReader(File(file).openRead());
+  final reader = TarDecoderImpl(File(file).openRead());
   await reader.moveNext();
   expect(reader.current.size, 9663676416);
 }

@@ -1,5 +1,5 @@
-import '../../constants.dart';
 import '../../format/interface/format.dart';
+import '../../type_flag/interface/flag.dart';
 
 /// Header of a tar entry
 ///
@@ -51,7 +51,4 @@ abstract class TarHeader {
 
   /// The TAR format of the header.
   TarFormat get format;
-
-  /// Checks if this header indicates that the file will have content.
-  bool get hasContent;
 }

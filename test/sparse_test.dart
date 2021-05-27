@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:tar/reader.dart';
+import 'package:tar/decoder/impl/tar_decoder.dart';
 import 'package:test/test.dart';
 
 import 'system_tar.dart';
@@ -56,21 +56,22 @@ void fillRandomBytes(List<int> bytes, Random random) {
 }
 
 Future<void> validate(Stream<List<int>> tar, Map<String, String> files) async {
-  final reader = TarReader(tar);
+  final reader = TarDecoderImpl(tar);
   for (var i = 0; i < files.length; i++) {
     expect(await reader.moveNext(), isTrue);
     final fileName = reader.current.name;
     final matchingFile = files[fileName];
     if (matchingFile == null) {
       fail('Unexpected file $fileName in tar file');
-    }
-    final actualContents = ChunkedStreamReader(File(matchingFile).openRead());
-    final tarContents = ChunkedStreamReader(reader.current.contents);
-    for (;;) {
-      final actualChunk = await actualContents.readBytes(1024);
-      final tarChunk = await tarContents.readBytes(1024);
-      expect(tarChunk, actualChunk);
-      if (actualChunk.isEmpty) break;
+    } else {
+      final actualContents = ChunkedStreamReader(File(matchingFile).openRead());
+      final tarContents = ChunkedStreamReader(reader.current.contents);
+      for (;;) {
+        final actualChunk = await ChunkedStreamReader.readBytes(actualContents, 1024);
+        final tarChunk = await ChunkedStreamReader.readBytes(tarContents, 1024);
+        expect(tarChunk, actualChunk);
+        if (actualChunk.isEmpty) break;
+      }
     }
   }
 }
@@ -159,124 +160,124 @@ void main() {
         input: [],
         size: 0,
         isValid: true,
-        inverted: [SparseEntry(0, 0)],
+        inverted: [SparseEntryOffsetLengthImpl(0, 0)],
       ),
       _SparseTestcase(
         input: [],
         size: 5000,
         isValid: true,
-        inverted: [SparseEntry(0, 5000)],
+        inverted: [SparseEntryOffsetLengthImpl(0, 5000)],
       ),
       _SparseTestcase(
-        input: [SparseEntry(0, 5000)],
+        input: [SparseEntryOffsetLengthImpl(0, 5000)],
         size: 5000,
         isValid: true,
-        inverted: [SparseEntry(5000, 0)],
+        inverted: [SparseEntryOffsetLengthImpl(5000, 0)],
       ),
       _SparseTestcase(
-        input: [SparseEntry(1000, 4000)],
+        input: [SparseEntryOffsetLengthImpl(1000, 4000)],
         size: 5000,
         isValid: true,
-        inverted: [SparseEntry(0, 1000), SparseEntry(5000, 0)],
+        inverted: [SparseEntryOffsetLengthImpl(0, 1000), SparseEntryOffsetLengthImpl(5000, 0)],
       ),
       _SparseTestcase(
-        input: [SparseEntry(0, 3000)],
+        input: [SparseEntryOffsetLengthImpl(0, 3000)],
         size: 5000,
         isValid: true,
-        inverted: [SparseEntry(3000, 2000)],
+        inverted: [SparseEntryOffsetLengthImpl(3000, 2000)],
       ),
       _SparseTestcase(
-        input: [SparseEntry(3000, 2000)],
+        input: [SparseEntryOffsetLengthImpl(3000, 2000)],
         size: 5000,
         isValid: true,
-        inverted: [SparseEntry(0, 3000), SparseEntry(5000, 0)],
+        inverted: [SparseEntryOffsetLengthImpl(0, 3000), SparseEntryOffsetLengthImpl(5000, 0)],
       ),
       _SparseTestcase(
-        input: [SparseEntry(2000, 2000)],
+        input: [SparseEntryOffsetLengthImpl(2000, 2000)],
         size: 5000,
         isValid: true,
-        inverted: [SparseEntry(0, 2000), SparseEntry(4000, 1000)],
+        inverted: [SparseEntryOffsetLengthImpl(0, 2000), SparseEntryOffsetLengthImpl(4000, 1000)],
       ),
       _SparseTestcase(
-        input: [SparseEntry(0, 2000), SparseEntry(8000, 2000)],
+        input: [SparseEntryOffsetLengthImpl(0, 2000), SparseEntryOffsetLengthImpl(8000, 2000)],
         size: 10000,
         isValid: true,
-        inverted: [SparseEntry(2000, 6000), SparseEntry(10000, 0)],
+        inverted: [SparseEntryOffsetLengthImpl(2000, 6000), SparseEntryOffsetLengthImpl(10000, 0)],
       ),
       _SparseTestcase(
         input: [
-          SparseEntry(0, 2000),
-          SparseEntry(2000, 2000),
-          SparseEntry(4000, 0),
-          SparseEntry(4000, 3000),
-          SparseEntry(7000, 1000),
-          SparseEntry(8000, 0),
-          SparseEntry(8000, 2000)
+          SparseEntryOffsetLengthImpl(0, 2000),
+          SparseEntryOffsetLengthImpl(2000, 2000),
+          SparseEntryOffsetLengthImpl(4000, 0),
+          SparseEntryOffsetLengthImpl(4000, 3000),
+          SparseEntryOffsetLengthImpl(7000, 1000),
+          SparseEntryOffsetLengthImpl(8000, 0),
+          SparseEntryOffsetLengthImpl(8000, 2000)
         ],
         size: 10000,
         isValid: true,
-        inverted: [SparseEntry(10000, 0)],
+        inverted: [SparseEntryOffsetLengthImpl(10000, 0)],
       ),
       _SparseTestcase(
         input: [
-          SparseEntry(0, 0),
-          SparseEntry(1000, 0),
-          SparseEntry(2000, 0),
-          SparseEntry(3000, 0),
-          SparseEntry(4000, 0),
-          SparseEntry(5000, 0),
+          SparseEntryOffsetLengthImpl(0, 0),
+          SparseEntryOffsetLengthImpl(1000, 0),
+          SparseEntryOffsetLengthImpl(2000, 0),
+          SparseEntryOffsetLengthImpl(3000, 0),
+          SparseEntryOffsetLengthImpl(4000, 0),
+          SparseEntryOffsetLengthImpl(5000, 0),
         ],
         size: 5000,
         isValid: true,
-        inverted: [SparseEntry(0, 5000)],
+        inverted: [SparseEntryOffsetLengthImpl(0, 5000)],
       ),
       _SparseTestcase(
-        input: [SparseEntry(1, 0)],
+        input: [SparseEntryOffsetLengthImpl(1, 0)],
         size: 0,
         isValid: false,
       ),
       _SparseTestcase(
-        input: [SparseEntry(-1, 0)],
+        input: [SparseEntryOffsetLengthImpl(-1, 0)],
         size: 100,
         isValid: false,
       ),
       _SparseTestcase(
-        input: [SparseEntry(0, -1)],
+        input: [SparseEntryOffsetLengthImpl(0, -1)],
         size: 100,
         isValid: false,
       ),
       _SparseTestcase(
-        input: [SparseEntry(0, 1)],
+        input: [SparseEntryOffsetLengthImpl(0, 1)],
         size: -100,
         isValid: false,
       ),
       _SparseTestcase(
-        input: [SparseEntry(9223372036854775807, 3), SparseEntry(6, -5)],
+        input: [SparseEntryOffsetLengthImpl(9223372036854775807, 3), SparseEntryOffsetLengthImpl(6, -5)],
         size: 35,
         isValid: false,
       ),
       _SparseTestcase(
-        input: [SparseEntry(1, 3), SparseEntry(6, -5)],
+        input: [SparseEntryOffsetLengthImpl(1, 3), SparseEntryOffsetLengthImpl(6, -5)],
         size: 35,
         isValid: false,
       ),
       _SparseTestcase(
-        input: [SparseEntry(9223372036854775807, 9223372036854775807)],
+        input: [SparseEntryOffsetLengthImpl(9223372036854775807, 9223372036854775807)],
         size: 9223372036854775807,
         isValid: false,
       ),
       _SparseTestcase(
-        input: [SparseEntry(3, 3)],
+        input: [SparseEntryOffsetLengthImpl(3, 3)],
         size: 5,
         isValid: false,
       ),
       _SparseTestcase(
-        input: [SparseEntry(2, 0), SparseEntry(1, 0), SparseEntry(0, 0)],
+        input: [SparseEntryOffsetLengthImpl(2, 0), SparseEntryOffsetLengthImpl(1, 0), SparseEntryOffsetLengthImpl(0, 0)],
         size: 3,
         isValid: false,
       ),
       _SparseTestcase(
-        input: [SparseEntry(1, 3), SparseEntry(2, 2)],
+        input: [SparseEntryOffsetLengthImpl(1, 3), SparseEntryOffsetLengthImpl(2, 2)],
         size: 10,
         isValid: false,
       ),
@@ -284,11 +285,11 @@ void main() {
     for (var i = 0; i < tests.length; i++) {
       final testcase = tests[i];
       test('validateSparseEntries #$i', () {
-        expect(validateSparseEntries(testcase.input, testcase.size), testcase.isValid);
+        expect(TarDecoderImpl.validateSparseEntries(testcase.input, testcase.size), testcase.isValid);
       });
       if (testcase.isValid) {
         test('invertSparseEntries #$i', () {
-          expect(invertSparseEntries(testcase.input, testcase.size), testcase.inverted);
+          expect(TarDecoderImpl.invertSparseEntries(testcase.input, testcase.size), testcase.inverted);
         });
       }
     }

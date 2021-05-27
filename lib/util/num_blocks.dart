@@ -1,4 +1,4 @@
-import '../constants.dart';
+import '../base/constants.dart';
 
 int numBlocks(int fileSize) {
   if (fileSize % blockSize == 0) {

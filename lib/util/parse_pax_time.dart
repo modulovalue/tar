@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import '../tar_exception.dart';
+import '../base/tar_exception.dart';
 import 'us_since_epoch.dart';
 
 /// Takes a [paxTimeString] of the form %d.%d as described in the PAX

@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import '../../constants.dart';
 import '../../header/interface/header.dart';
+import '../../type_flag/interface/flag.dart';
 import '../interface/entry.dart';
 
 class TarEntryImpl implements TarEntry {

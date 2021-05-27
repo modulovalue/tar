@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import '../constants.dart';
+import '../base/constants.dart';
 
 const _checksumEnd = checksumOffset + checksumLength;
 const _checksumPlaceholder = $space;

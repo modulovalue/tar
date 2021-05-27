@@ -1,19 +1,22 @@
 import 'dart:typed_data';
 
-import '../../constants.dart';
+import '../../base/constants.dart';
+import '../../base/tar_exception.dart';
 import '../../format/impl/formats.dart';
 import '../../format/interface/format.dart';
 import '../../header/interface/header.dart';
-import '../../tar_exception.dart';
+import '../../type_flag/impl/flags.dart';
+import '../../type_flag/impl/parser.dart';
+import '../../type_flag/interface/flag.dart';
 import '../../util/compute_checksum.dart';
 import '../../util/is_not_ascii.dart';
 import '../../util/matches_header.dart';
-import '../../util/parse_int.dart';
 import '../../util/parse_pax_time.dart';
 import '../../util/read_numeric.dart';
 import '../../util/read_octal.dart';
 import '../../util/read_string.dart';
 import '../../util/seconds_since_epoch.dart';
+import '../interface/pax_headers.dart';
 
 class TarHeaderImpl implements TarHeader {
   TypeFlag internalTypeFlag;
@@ -43,29 +46,6 @@ class TarHeaderImpl implements TarHeader {
   int size;
 
   @override
-  bool get hasContent {
-    switch (typeFlag) {
-      case TypeFlag.link:
-      case TypeFlag.symlink:
-      case TypeFlag.block:
-      case TypeFlag.dir:
-      case TypeFlag.char:
-      case TypeFlag.fifo:
-        return false;
-      case TypeFlag.reg:
-      case TypeFlag.regA:
-      case TypeFlag.reserved:
-      case TypeFlag.xHeader:
-      case TypeFlag.xGlobalHeader:
-      case TypeFlag.gnuSparse:
-      case TypeFlag.gnuLongName:
-      case TypeFlag.gnuLongLink:
-      case TypeFlag.vendor:
-        return true;
-    }
-  }
-
-  @override
   DateTime modified;
 
   @override
@@ -84,7 +64,7 @@ class TarHeaderImpl implements TarHeader {
   TarFormat format;
 
   @override
-  TypeFlag get typeFlag => internalTypeFlag == TypeFlag.regA ? TypeFlag.reg : internalTypeFlag;
+  TypeFlag get typeFlag => internalTypeFlag == TypeFlags.regA ? TypeFlags.reg : internalTypeFlag;
 
   /// Creates a tar header from the individual field.
   factory TarHeaderImpl({
@@ -108,7 +88,7 @@ class TarHeaderImpl implements TarHeader {
         name: name,
         modified: modified ?? DateTime.fromMillisecondsSinceEpoch(0),
         format: format ?? TarFormats.pax,
-        typeFlag: typeFlag ?? TypeFlag.reg,
+        typeFlag: typeFlag ?? TypeFlags.reg,
         linkName: linkName,
         mode: mode,
         size: size,
@@ -144,9 +124,9 @@ class TarHeaderImpl implements TarHeader {
   }) : internalTypeFlag = typeFlag;
 
   factory TarHeaderImpl.parseBlock(
-    Uint8List headerBlock, {
-    Map<String, String> paxHeaders = const {},
-  }) {
+    Uint8List headerBlock,
+    PaxHeaders paxHeaders,
+  ) {
     assert(headerBlock.length == 512, "Unexpected headerBlock length (${headerBlock.length}) expected 512.");
     final format = _getFormat(headerBlock);
     final size = paxHeaders.size ?? readOctal(headerBlock, 124, 12);
@@ -161,10 +141,18 @@ class TarHeaderImpl implements TarHeader {
       groupId: readNumeric(headerBlock, 116, 8),
       size: size,
       modified: secondsSinceEpoch(readOctal(headerBlock, 136, 12)),
-      typeFlag: typeflagFromByte(headerBlock[156]),
+      typeFlag: () {
+        final byte = headerBlock[156];
+        final flag = tryParseTypeFlag(byte);
+        if (flag == null) {
+          throw TarExceptionInvalidTypeflagImpl._('Invalid typeflag value $byte');
+        } else {
+          return flag;
+        }
+      }(),
       linkName: readStringOrNullIfEmpty(headerBlock, 157, 100),
     );
-    if (header.hasContent && size < 0) {
+    if (header.typeFlag.hasContent && size < 0) {
       throw TarExceptionInvalidSizeIndicatedImpl('Invalid header: indicates an invalid size of $size');
     } else {
       if (format.isValid() && format != TarFormats.v7) {
@@ -200,90 +188,108 @@ class TarHeaderImpl implements TarHeader {
           header.name = '$prefix/${header.name}';
         }
       }
-      return header.._applyPaxHeaders(paxHeaders);
+      paxHeaders.forEach(header.processEntry);
+      return header;
     }
   }
 
-  void _applyPaxHeaders(Map<String, String> headers) {
-    for (final entry in headers.entries) {
-      if (entry.value == '') {
-        // Keep the original USTAR value.
-      } else {
-        switch (entry.key) {
-          case paxPath:
-            name = entry.value;
-            break;
-          case paxLinkpath:
-            linkName = entry.value;
-            break;
-          case paxUname:
-            userName = entry.value;
-            break;
-          case paxGname:
-            groupName = entry.value;
-            break;
-          case paxUid:
-            userId = parseInt(entry.value);
-            break;
-          case paxGid:
-            groupId = parseInt(entry.value);
-            break;
-          case paxAtime:
-            accessed = parsePaxTime(entry.value);
-            break;
-          case paxMtime:
-            modified = parsePaxTime(entry.value);
-            break;
-          case paxCtime:
-            changed = parsePaxTime(entry.value);
-            break;
-          case paxSize:
-            size = parseInt(entry.value);
-            break;
-          default:
-            break;
-        }
-      }
-    }
-  }
-}
-
-/// Checks that [rawHeader] represents a valid tar header based on the
-/// checksum, and then attempts to guess the specific format based
-/// on magic values. If the checksum fails, then an error is thrown.
-TarFormat _getFormat(Uint8List rawHeader) {
-  final checksum = readOctal(rawHeader, checksumOffset, checksumLength);
-  // Modern TAR archives use the unsigned checksum, but we check the signed
-  // checksum as well for compatibility.
-  if (checksum != computeUnsignedHeaderChecksum(rawHeader) && checksum != computeSignedHeaderChecksum(rawHeader)) {
-    throw const TarExceptionChecksumDoesNotMatchImpl('Invalid header: checksum does not match');
-  } else {
-    final hasUstarMagic = matchesHeader(rawHeader, magicUstar, magicOffset);
-    if (hasUstarMagic) {
-      if (matchesHeader(rawHeader, trailerStar, starTrailerOffset)) {
-        return TarFormats.star;
-      } else {
-        return TarFormats.ustar | TarFormats.pax;
-      }
-    } else if (matchesHeader(rawHeader, magicGnu, magicOffset) && matchesHeader(rawHeader, versionGnu, versionOffset)) {
-      return TarFormats.gnu;
+  /// Checks that [rawHeader] represents a valid tar header based on the
+  /// checksum, and then attempts to guess the specific format based
+  /// on magic values. If the checksum fails, then an error is thrown.
+  static TarFormat _getFormat(Uint8List rawHeader) {
+    final checksum = readOctal(rawHeader, checksumOffset, checksumLength);
+    // Modern TAR archives use the unsigned checksum, but we check the signed
+    // checksum as well for compatibility.
+    if (checksum != computeUnsignedHeaderChecksum(rawHeader) && checksum != computeSignedHeaderChecksum(rawHeader)) {
+      throw const TarExceptionChecksumDoesNotMatchImpl('Invalid header: checksum does not match');
     } else {
-      return TarFormats.v7;
+      final hasUstarMagic = matchesHeader(rawHeader, magicUstar, magicOffset);
+      if (hasUstarMagic) {
+        if (matchesHeader(rawHeader, trailerStar, starTrailerOffset)) {
+          return TarFormats.star;
+        } else {
+          return TarFormats.ustar | TarFormats.pax;
+        }
+      } else if (matchesHeader(rawHeader, magicGnu, magicOffset) && matchesHeader(rawHeader, versionGnu, versionOffset)) {
+        return TarFormats.gnu;
+      } else {
+        return TarFormats.v7;
+      }
+    }
+  }
+
+  void processEntry(String key, String value) {
+    if (value == '') {
+      // Keep the original USTAR value.
+    } else {
+      switch (key) {
+        case paxPath:
+          name = value;
+          break;
+        case paxLinkpath:
+          linkName = value;
+          break;
+        case paxUname:
+          userName = value;
+          break;
+        case paxGname:
+          groupName = value;
+          break;
+        case paxUid:
+          try {
+            userId = int.parse(value, radix: 10);
+          } on FormatException catch (e) {
+            throw TarExceptionInvalidPaxUidImpl("Invalid integer ${value} $e");
+          }
+          break;
+        case paxGid:
+          try {
+            groupId = int.parse(value, radix: 10);
+          } on FormatException catch (e) {
+            throw TarExceptionInvalidPaxGidImpl("Invalid integer ${value} $e");
+          }
+          break;
+        case paxAtime:
+          accessed = parsePaxTime(value);
+          break;
+        case paxMtime:
+          modified = parsePaxTime(value);
+          break;
+        case paxCtime:
+          changed = parsePaxTime(value);
+          break;
+        case paxSize:
+          try {
+            size = int.parse(value, radix: 10);
+          } on FormatException catch (e) {
+            throw TarExceptionInvalidPaxSizeImpl("Invalid integer ${value} $e");
+          }
+          break;
+      }
     }
   }
 }
 
-extension _ReadPaxHeaders on Map<String, String> {
-  int? get size {
-    final sizeStr = this[paxSize];
-    return sizeStr == null ? null : int.tryParse(sizeStr);
-  }
+class TarExceptionInvalidPaxSizeImpl extends FormatException implements TarException {
+  const TarExceptionInvalidPaxSizeImpl(String message) : super(message);
 }
 
-class TarExceptionChecksumDoesNotMatchImpl extends FormatException implements TarException {
-  const TarExceptionChecksumDoesNotMatchImpl(String message) : super(message);
+class TarExceptionInvalidPaxGidImpl extends FormatException implements TarException {
+  const TarExceptionInvalidPaxGidImpl(String message) : super(message);
+}
+
+class TarExceptionInvalidPaxUidImpl extends FormatException implements TarException {
+  const TarExceptionInvalidPaxUidImpl(String message) : super(message);
+}
+
+class TarExceptionInvalidTypeflagImpl extends FormatException implements TarException {
+  const TarExceptionInvalidTypeflagImpl._(String message) : super(message);
 }
 
 class TarExceptionInvalidSizeIndicatedImpl extends FormatException implements TarException {
   const TarExceptionInvalidSizeIndicatedImpl(String message) : super(message);
+}
+
+class TarExceptionChecksumDoesNotMatchImpl extends FormatException implements TarException {
+  const TarExceptionChecksumDoesNotMatchImpl(String message) : super(message);
 }
