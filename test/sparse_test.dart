@@ -3,9 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:async/async.dart';
 import 'package:tar/reader.dart';
-import 'package:tar/sparse.dart';
 import 'package:test/test.dart';
 
 import 'system_tar.dart';
@@ -27,11 +25,10 @@ Future<void> createTestFile(String path, int size) {
   return sink.close();
 }
 
-/// Creates a sparse file with a logical size of [size]. The file will be all
-/// zeroes.
-Future<void> createCleanSparseTestFile(String path, int size) async {
-  await Process.run('truncate', ['--size=$size', path]);
-}
+/// Creates a sparse file with a logical size of [size].
+/// The file will be all zeroes.
+Future<void> createCleanSparseTestFile(String path, int size) => //
+    Process.run('truncate', ['--size=$size', path]);
 
 /// Creates a file with [size], where some chunks are zeroes.
 Future<void> createSparseTestFile(String path, int size) {

@@ -1,8 +1,12 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:tar/exception.dart';
-import 'package:tar/utils.dart';
+import 'package:tar/tar_exception.dart';
+import 'package:tar/util/parse_pax_time.dart';
+import 'package:tar/util/read_numeric.dart';
+import 'package:tar/util/read_string.dart';
+import 'package:tar/util/us_since_epoch.dart';
+import 'package:tar/util/zeroes.dart';
 import 'package:test/test.dart';
 
 // ignore_for_file: avoid_js_rounded_ints
@@ -41,19 +45,19 @@ void main() {
   group('readNumeric', () {
     void testValid(String value, int expected) {
       test('readNumeric($value)', () {
-        expect(Uint8List.fromList(value.codeUnits).readNumeric(0, value.length), expected);
+        expect(readNumeric(Uint8List.fromList(value.codeUnits), 0, value.length), expected);
       });
     }
 
     void testValidBin(List<int> value, int expected) {
       test('readNumeric($value)', () {
-        expect(Uint8List.fromList(value).readNumeric(0, value.length), expected);
+        expect(readNumeric(Uint8List.fromList(value), 0, value.length), expected);
       });
     }
 
     void testInvalid(String value) {
       test('readNumeric($value)', () {
-        expect(() => _bytes(value).readNumeric(0, value.length), throwsA(isA<TarException>()));
+        expect(() => readNumeric(_bytes(value), 0, value.length), throwsA(isA<TarException>()));
       });
     }
 

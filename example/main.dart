@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:tar/constants.dart';
-import 'package:tar/entry.dart';
-import 'package:tar/header.dart';
+import 'package:tar/entry/impl/entry.dart';
+import 'package:tar/entry/interface/entry.dart';
+import 'package:tar/header/impl/header.dart';
 import 'package:tar/reader.dart';
 import 'package:tar/writer.dart';
 
@@ -20,15 +21,17 @@ Future<void> main() async {
   }
   // We can write tar files to any stream sink like this:
   final output = File('test.tar').openWrite();
+  final data = utf8.encode('Hello world');
   await Stream<TarEntry>.value(
-    TarEntry.data(
-      TarHeader(
+    TarEntryImpl(
+      TarHeaderImpl(
         name: 'hello_dart.txt',
         mode: int.parse('644', radix: 8),
         userName: 'Dart',
         groupName: 'Dartgroup',
+        size: data.length,
       ),
-      utf8.encode('Hello world'),
+      Stream.value(data),
     ),
   )
       // transform tar entries back to a byte stream

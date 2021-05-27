@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'constants.dart';
-import 'entry.dart';
-import 'format.dart';
-import 'header.dart';
-import 'utils.dart';
+import 'entry/impl/entry.dart';
+import 'entry/interface/entry.dart';
+import 'format/impl/formats.dart';
+import 'header/impl/header.dart';
+import 'header/interface/header.dart';
+import 'util/ms_since_epoch.dart';
 
 class _WritingTransformer extends StreamTransformerBase<TarEntry, List<int>> {
   final OutputFormat format;
@@ -265,16 +267,16 @@ class _WritingSink extends StreamSink<TarEntry> {
         ..addByte($lf); // \n
     });
     final paxData = buffer.takeBytes();
-    final file = TarEntry.data(
-      HeaderImpl.internal(
-        format: TarFormat.pax,
+    final file = TarEntryImpl(
+      TarHeaderImpl(
+        format: TarFormats.pax,
         modified: millisecondsSinceEpoch(0),
         name: 'PaxHeader/${_paxHeaderCount++}',
         mode: 0,
         size: paxData.length,
         typeFlag: TypeFlag.xHeader,
       ),
-      paxData,
+      Stream.value(paxData),
     );
     return _safeAdd(file);
   }
@@ -294,14 +296,15 @@ class _WritingSink extends StreamSink<TarEntry> {
     final linkName = values[paxLinkpath];
     Future<void> write(List<int> name, TypeFlag flag) {
       return _safeAdd(
-        TarEntry.data(
-          HeaderImpl.internal(
+        TarEntryImpl(
+          TarHeaderImpl(
             name: '././@LongLink',
             modified: millisecondsSinceEpoch(0),
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
             typeFlag: flag,
+            size: name.length,
           ),
-          name,
+          Stream.value(name),
         ),
       );
     }
@@ -353,11 +356,11 @@ extension on Uint8List {
     for (var pos = position + length - 2; pos >= position; pos--) {
       if (number != 0) {
         // Write the last octal digit of the number (e.g. the last 4 bits)
-        this[pos] = (number & 7) + $0;
+        this[pos] = (number & 7) + $char0;
         // then drop the last digit (divide by 8 = 2³)
         number >>= 3;
       } else if (needsExplicitZero) {
-        this[pos] = $0;
+        this[pos] = $char0;
         needsExplicitZero = false;
       } else {
         // done, left-pad with spaces

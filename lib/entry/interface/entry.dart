@@ -1,19 +1,16 @@
 import 'dart:async';
 
-import 'package:meta/meta.dart';
-
-import 'constants.dart';
-import 'header.dart';
+import '../../constants.dart';
+import '../../header/interface/header.dart';
 
 /// An entry in a tar file.
 ///
 /// Usually, tar entries are read from a stream, and they're bound to the stream
 /// from which they've been read. This means that they can only be read once,
 /// and that only one [TarEntry] is active at a time.
-@sealed
-class TarEntry {
+abstract class TarEntry {
   /// The parsed [TarHeader] of this tar entry.
-  final TarHeader header;
+  TarHeader get header;
 
   /// The content stream of the active tar entry.
   ///
@@ -25,35 +22,18 @@ class TarEntry {
   /// to [contents] at all before calling [StreamIterator.moveNext] again.
   /// In that case, this library will take care of draining the stream to get to
   /// the next entry.
-  final Stream<List<int>> contents;
+  Stream<List<int>> get contents;
 
   /// The name of this entry, as indicated in the header or a previous pax
   /// entry.
-  String get name => header.name;
+  String get name;
 
   /// The type of tar entry (file, directory, etc.).
-  TypeFlag get type => header.typeFlag;
+  TypeFlag get type;
 
   /// The content size of this entry, in bytes.
-  int get size => header.size;
+  int get size;
 
   /// Time of the last modification of this file, as indicated in the [header].
-  DateTime get modified => header.modified;
-
-  /// Creates a tar entry from a [header] and the [contents] stream.
-  ///
-  /// If the total length of [contents] is known, consider setting the
-  /// [header]'s [TarHeader.size] property to the appropriate value.
-  /// Otherwise, the tar writer needs to buffer contents to determine the right
-  /// size.
-  // factory so that this class can't be extended
-  const factory TarEntry(TarHeader header, Stream<List<int>> contents) = TarEntry._;
-
-  const TarEntry._(this.header, this.contents);
-
-  /// Creates an in-memory tar entry from the [header] and the [data] to store.
-  factory TarEntry.data(TarHeader header, List<int> data) {
-    (header as HeaderImpl).size = data.length;
-    return TarEntry(header, Stream.value(data));
-  }
+  DateTime get modified;
 }

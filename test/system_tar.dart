@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:tar/entry.dart';
+import 'package:tar/entry/interface/entry.dart';
 import 'package:tar/writer.dart';
 import 'package:test/test.dart';
 

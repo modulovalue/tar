@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:tar/entry.dart';
-import 'package:tar/header.dart';
+import 'package:tar/entry/impl/entry.dart';
+import 'package:tar/entry/interface/entry.dart';
+import 'package:tar/header/impl/header.dart';
 import 'package:tar/writer.dart';
 import 'package:test/test.dart';
 
@@ -16,9 +17,9 @@ void main() {
     for (final style in OutputFormat.values) {
       test(style.toString(), () async {
         final name = '${'very' * 30} long name.txt';
-        final withLongName = TarEntry.data(
-          TarHeader(name: name, mode: 0, size: 0),
-          Uint8List(0),
+        final withLongName = TarEntryImpl(
+          TarHeaderImpl(name: name, mode: 0, size: 0),
+          Stream.value([]),
         );
         final proc = await writeToTar(
           ['--list'],
@@ -31,8 +32,8 @@ void main() {
   }, testOn: '!windows');
   test('writes headers', () async {
     final date = DateTime.parse('2020-12-30 12:34');
-    final entry = TarEntry.data(
-      TarHeader(
+    final entry = TarEntryImpl(
+      TarHeaderImpl(
         name: 'hello_dart.txt',
         mode: int.parse('744', radix: 8),
         size: 0,
@@ -42,7 +43,7 @@ void main() {
         groupName: 'long group that exceeds 32 characters',
         modified: date,
       ),
-      Uint8List(0),
+      Stream.value([]),
     );
     final proc = await writeToTar(['--list', '--verbose'], Stream.value(entry));
     expect(
@@ -60,8 +61,8 @@ void main() {
   test('writes huge files', () async {
     final oneMb = Uint8List(oneMbSize);
     const count = tenGbSize ~/ oneMbSize;
-    final entry = TarEntry(
-      TarHeader(
+    final entry = TarEntryImpl(
+      TarHeaderImpl(
         name: 'file.blob',
         mode: 0,
         size: tenGbSize,
@@ -80,8 +81,8 @@ void main() {
     test('when they are too large', () {
       final oneMb = Uint8List(oneMbSize);
       const count = tenGbSize ~/ oneMbSize;
-      final entry = TarEntry(
-        TarHeader(
+      final entry = TarEntryImpl(
+        TarHeaderImpl(
           name: 'file.blob',
           mode: 0,
           size: tenGbSize,
@@ -92,12 +93,9 @@ void main() {
     });
     test('when they use long user names', () {
       shouldThrow(
-        TarEntry.data(
-          TarHeader(
-            name: 'file.txt',
-            userName: 'this name is longer than 32 chars, which is not allowed',
-          ),
-          [],
+        TarEntryImpl(
+          TarHeaderImpl(name: 'file.txt', userName: 'this name is longer than 32 chars, which is not allowed', size: 0),
+          Stream.value([]),
         ),
       );
     });

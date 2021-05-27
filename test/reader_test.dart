@@ -3,13 +3,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:async/async.dart';
 import 'package:tar/constants.dart';
-import 'package:tar/exception.dart';
-import 'package:tar/format.dart';
-import 'package:tar/header.dart';
+import 'package:tar/tar_exception.dart';
+import 'package:tar/format/impl/formats.dart';
+import 'package:tar/header/impl/header.dart';
+import 'package:tar/header/interface/header.dart';
 import 'package:tar/reader.dart';
-import 'package:tar/utils.dart';
+import 'package:tar/util/ms_since_epoch.dart';
+import 'package:tar/util/us_since_epoch.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -149,7 +150,7 @@ void main() {
       {
         'file': 'gnu.tar',
         'headers': <TarHeader>[
-          TarHeader(
+          TarHeaderImpl(
             name: 'small.txt',
             mode: 436,
             userId: 1000,
@@ -159,9 +160,9 @@ void main() {
             typeFlag: TypeFlag.reg,
             userName: 'garett',
             groupName: 'garett',
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'small2.txt',
             mode: 436,
             userId: 1000,
@@ -171,14 +172,14 @@ void main() {
             typeFlag: TypeFlag.reg,
             userName: 'garett',
             groupName: 'garett',
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           )
         ],
       },
       {
         'file': 'sparse-formats.tar',
         'headers': <TarHeader>[
-          TarHeader(
+          TarHeaderImpl(
             name: 'sparse-gnu',
             mode: 420,
             userId: 1000,
@@ -190,9 +191,9 @@ void main() {
             groupName: 'jonas',
             devMajor: 0,
             devMinor: 0,
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'sparse-posix-v-0-0',
             mode: 420,
             userId: 1000,
@@ -204,9 +205,9 @@ void main() {
             groupName: 'jonas',
             devMajor: 0,
             devMinor: 0,
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'sparse-posix-0-1',
             mode: 420,
             userId: 1000,
@@ -218,9 +219,9 @@ void main() {
             groupName: 'jonas',
             devMajor: 0,
             devMinor: 0,
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'sparse-posix-1-0',
             mode: 420,
             userId: 1000,
@@ -232,9 +233,9 @@ void main() {
             groupName: 'jonas',
             devMajor: 0,
             devMinor: 0,
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'end',
             mode: 420,
             userId: 1000,
@@ -246,14 +247,14 @@ void main() {
             groupName: 'jonas',
             devMajor: 0,
             devMinor: 0,
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           )
         ],
       },
       {
         'file': 'star.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'small.txt',
             mode: 416,
             userId: 1000,
@@ -265,9 +266,9 @@ void main() {
             groupName: 'garett',
             accessed: millisecondsSinceEpoch(1597755680000),
             changed: millisecondsSinceEpoch(1597755680000),
-            format: TarFormat.star,
+            format: TarFormats.star,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'small2.txt',
             mode: 416,
             userId: 1000,
@@ -279,14 +280,14 @@ void main() {
             groupName: 'garett',
             accessed: millisecondsSinceEpoch(1597755958000),
             changed: millisecondsSinceEpoch(1597755958000),
-            format: TarFormat.star,
+            format: TarFormats.star,
           )
         ]
       },
       {
         'file': 'v7.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'small.txt',
             mode: 436,
             userId: 1000,
@@ -294,9 +295,9 @@ void main() {
             size: 3,
             modified: millisecondsSinceEpoch(1597755680000),
             typeFlag: TypeFlag.reg,
-            format: TarFormat.v7,
+            format: TarFormats.v7,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'small2.txt',
             mode: 436,
             userId: 1000,
@@ -304,14 +305,14 @@ void main() {
             size: 8,
             modified: millisecondsSinceEpoch(1597755958000),
             typeFlag: TypeFlag.reg,
-            format: TarFormat.v7,
+            format: TarFormats.v7,
           )
         ],
       },
       {
         'file': 'ustar.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'small.txt',
             mode: 436,
             userId: 1000,
@@ -321,9 +322,9 @@ void main() {
             typeFlag: TypeFlag.reg,
             userName: 'garett',
             groupName: 'garett',
-            format: TarFormat.ustar,
+            format: TarFormats.ustar,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'small2.txt',
             mode: 436,
             userId: 1000,
@@ -333,14 +334,14 @@ void main() {
             typeFlag: TypeFlag.reg,
             userName: 'garett',
             groupName: 'garett',
-            format: TarFormat.ustar,
+            format: TarFormats.ustar,
           )
         ],
       },
       {
         'file': 'pax.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name:
                 'a/123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100',
             mode: 436,
@@ -353,9 +354,9 @@ void main() {
             changed: microsecondsSinceEpoch(1597823492427388),
             accessed: microsecondsSinceEpoch(1597823492427388),
             typeFlag: TypeFlag.reg,
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'a/b',
             mode: 511,
             userId: 1000,
@@ -369,7 +370,7 @@ void main() {
             typeFlag: TypeFlag.symlink,
             linkName:
                 '123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100',
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           ),
         ]
       },
@@ -386,7 +387,7 @@ void main() {
       {
         'file': 'pax-pos-size-file.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'bar',
             mode: 416,
             userId: 143077,
@@ -396,28 +397,28 @@ void main() {
             typeFlag: TypeFlag.reg,
             userName: 'jonasfj',
             groupName: 'jfj',
-            format: TarFormat.pax,
-          )
+            format: TarFormats.pax,
+          ),
         ],
       },
       {
         'file': 'pax-records.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             typeFlag: TypeFlag.reg,
             size: 0,
             name: 'pax-records',
             mode: 416,
             userName: 'walnut',
             modified: millisecondsSinceEpoch(0),
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           )
         ],
       },
       {
         'file': 'nil-gid-uid.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'nil-gid.txt',
             mode: 436,
             userId: 1000,
@@ -429,9 +430,9 @@ void main() {
             groupName: 'garett',
             devMajor: 0,
             devMinor: 0,
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'nil-uid.txt',
             mode: 436,
             userId: 0,
@@ -443,14 +444,14 @@ void main() {
             groupName: 'garett',
             devMajor: 0,
             devMinor: 0,
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           )
         ]
       },
       {
         'file': 'xattrs.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'small.txt',
             mode: 420,
             userId: 1000,
@@ -462,9 +463,9 @@ void main() {
             groupName: 'tok',
             accessed: microsecondsSinceEpoch(1597823492427388),
             changed: microsecondsSinceEpoch(1597823492427388),
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'small2.txt',
             mode: 420,
             userId: 1000,
@@ -476,7 +477,7 @@ void main() {
             groupName: 'tok',
             accessed: microsecondsSinceEpoch(1597823492427388),
             changed: microsecondsSinceEpoch(1597823492427388),
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           )
         ]
       },
@@ -484,7 +485,7 @@ void main() {
         // Matches the behavior of GNU, BSD, and STAR tar utilities.
         'file': 'gnu-multi-hdrs.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'long-path-name',
             size: 0,
             linkName: 'long-linkpath-name',
@@ -492,7 +493,7 @@ void main() {
             groupId: 1000,
             modified: millisecondsSinceEpoch(1597756829000),
             typeFlag: TypeFlag.symlink,
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           )
         ],
       },
@@ -504,7 +505,7 @@ void main() {
         //	tar --incremental -S -cvf gnu-incremental.tar test2
         'file': 'gnu-incremental.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'incremental/',
             mode: 16877,
             userId: 1000,
@@ -516,9 +517,9 @@ void main() {
             groupName: 'foobar',
             accessed: millisecondsSinceEpoch(1597755680000),
             changed: millisecondsSinceEpoch(1597755033000),
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'incremental/foo',
             mode: 33188,
             userId: 1000,
@@ -530,9 +531,9 @@ void main() {
             groupName: 'foobar',
             accessed: millisecondsSinceEpoch(1597759641000),
             changed: millisecondsSinceEpoch(1597755793000),
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'incremental/sparse',
             mode: 33188,
             userId: 1000,
@@ -544,7 +545,7 @@ void main() {
             groupName: 'foobar',
             accessed: millisecondsSinceEpoch(1597755703000),
             changed: millisecondsSinceEpoch(1597755602000),
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           )
         ]
       },
@@ -552,13 +553,13 @@ void main() {
         // Matches the behavior of GNU and BSD tar utilities.
         'file': 'pax-multi-hdrs.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'baz',
             size: 0,
             linkName: 'bzzt/bzzt/bzzt/bzzt/bzzt/baz',
             modified: millisecondsSinceEpoch(0),
             typeFlag: TypeFlag.symlink,
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           )
         ]
       },
@@ -568,7 +569,7 @@ void main() {
         // This is reasonable as GNU long names are C-strings.
         'file': 'gnu-long-nul.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: '9876543210',
             size: 0,
             mode: 420,
@@ -576,7 +577,7 @@ void main() {
             groupId: 1000,
             modified: millisecondsSinceEpoch(1597755682000),
             typeFlag: TypeFlag.reg,
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
             userName: 'jensen',
             groupName: 'jensen',
           )
@@ -590,7 +591,7 @@ void main() {
         // just to force the GNU format.
         'file': 'gnu-utf8.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: '🧸',
             size: 0,
             mode: 420,
@@ -600,14 +601,14 @@ void main() {
             typeFlag: TypeFlag.reg,
             userName: '🐻',
             groupName: '🥭',
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           )
         ]
       },
       {
         'file': 'gnu-non-utf8-name.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'pub\x80\x81\x82\x83dev',
             size: 0,
             mode: 422,
@@ -617,7 +618,7 @@ void main() {
             typeFlag: TypeFlag.reg,
             userName: 'walnut',
             groupName: 'dust',
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           )
         ]
       },
@@ -655,7 +656,7 @@ void main() {
         // USTAR archive with a regular entry with non-zero device numbers.
         'file': 'ustar-nonzero-device-numbers.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'file',
             size: 0,
             mode: 420,
@@ -665,7 +666,7 @@ void main() {
             groupName: 'Google',
             devMajor: 1,
             devMinor: 1,
-            format: TarFormat.ustar,
+            format: TarFormats.ustar,
           )
         ]
       },
@@ -673,14 +674,14 @@ void main() {
         // Works on BSD tar v3.1.2 and GNU tar v.1.27.1.
         'file': 'gnu-nil-sparse-data.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'nil-sparse-data',
             typeFlag: TypeFlag.gnuSparse,
             userId: 1000,
             groupId: 1000,
             size: 1000,
             modified: millisecondsSinceEpoch(1597756076000),
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           )
         ],
       },
@@ -688,14 +689,14 @@ void main() {
         // Works on BSD tar v3.1.2 and GNU tar v.1.27.1.
         'file': 'gnu-nil-sparse-hole.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'nil-sparse-hole',
             typeFlag: TypeFlag.gnuSparse,
             size: 1000,
             userId: 1000,
             groupId: 1000,
             modified: millisecondsSinceEpoch(1597756079000),
-            format: TarFormat.gnu,
+            format: TarFormats.gnu,
           )
         ]
       },
@@ -703,14 +704,14 @@ void main() {
         // Works on BSD tar v3.1.2 and GNU tar v.1.27.1.
         'file': 'pax-nil-sparse-data.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'sparse',
             typeFlag: TypeFlag.reg,
             size: 1000,
             userId: 1000,
             groupId: 1000,
             modified: millisecondsSinceEpoch(1597756076000),
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           )
         ]
       },
@@ -718,33 +719,33 @@ void main() {
         // Works on BSD tar v3.1.2 and GNU tar v.1.27.1.
         'file': 'pax-nil-sparse-hole.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'sparse.txt',
             typeFlag: TypeFlag.reg,
             size: 1000,
             userId: 1000,
             groupId: 1000,
             modified: millisecondsSinceEpoch(1597756077000),
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           )
         ]
       },
       {
         'file': 'trailing-slash.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             typeFlag: TypeFlag.dir,
             size: 0,
             name: '987654321/' * 30,
             modified: millisecondsSinceEpoch(0),
-            format: TarFormat.pax,
+            format: TarFormats.pax,
           )
         ]
       },
       {
         'file': 'pax-non-ascii-name.tar',
         'headers': [
-          TarHeader(
+          TarHeaderImpl(
             name: 'æøå/',
             mode: 493,
             size: 0,
@@ -752,11 +753,11 @@ void main() {
             userId: 224757,
             groupId: 89939,
             groupName: 'primarygroup',
-            format: TarFormat.pax,
+            format: TarFormats.pax,
             typeFlag: TypeFlag.dir,
             modified: DateTime.utc(2020, 10, 13, 13, 04, 32, 608, 662),
           ),
-          TarHeader(
+          TarHeaderImpl(
             name: 'æøå/æøå.dart',
             mode: 420,
             size: 1024,
@@ -764,7 +765,7 @@ void main() {
             userId: 224757,
             groupId: 89939,
             groupName: 'primarygroup',
-            format: TarFormat.pax,
+            format: TarFormats.pax,
             typeFlag: TypeFlag.reg,
             modified: DateTime.utc(2020, 10, 13, 13, 05, 12, 105, 884),
           ),

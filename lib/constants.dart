@@ -1,12 +1,12 @@
 import 'dart:typed_data';
 
-import 'exception.dart';
+import 'tar_exception.dart';
 
 // Magic values to help us identify the TAR header type.
 const magicGnu = [$u, $s, $t, $a, $r, $space]; // 'ustar '
 const versionGnu = [$space, 0]; // ' \x00'
 const magicUstar = [$u, $s, $t, $a, $r, 0]; // 'ustar\x00'
-const versionUstar = [$0, $0]; // '00'
+const versionUstar = [$char0, $char0]; // '00'
 const trailerStar = [$t, $a, $r, 0]; // 'tar\x00'
 
 /// The type flag of a header indicates the kind of file associated with the
@@ -78,23 +78,25 @@ enum TypeFlag {
 /// Generates the corresponding [TypeFlag] associated with [byte].
 TypeFlag typeflagFromByte(int byte) {
   switch (byte) {
-    case $0:
+    case $char0:
       return TypeFlag.reg;
     case 0:
+
+      /// https://github.com/simolus3/tar/issues/15
       return TypeFlag.regA;
-    case $1:
+    case $char1:
       return TypeFlag.link;
-    case $2:
+    case $char2:
       return TypeFlag.symlink;
-    case $3:
+    case $char3:
       return TypeFlag.char;
-    case $4:
+    case $char4:
       return TypeFlag.block;
-    case $5:
+    case $char5:
       return TypeFlag.dir;
-    case $6:
+    case $char6:
       return TypeFlag.fifo;
-    case $7:
+    case $char7:
       return TypeFlag.reserved;
     case $x:
       return TypeFlag.xHeader;
@@ -109,30 +111,35 @@ TypeFlag typeflagFromByte(int byte) {
     default:
       if (64 < byte && byte < 91) {
         return TypeFlag.vendor;
+      } else {
+        throw TarExceptionInvalidTypeflagImpl._('Invalid typeflag value $byte');
       }
-      throw TarException.header('Invalid typeflag value $byte');
   }
+}
+
+class TarExceptionInvalidTypeflagImpl extends FormatException implements TarException {
+  const TarExceptionInvalidTypeflagImpl._(String message) : super(message);
 }
 
 int typeflagToByte(TypeFlag flag) {
   switch (flag) {
     case TypeFlag.reg:
     case TypeFlag.regA:
-      return $0;
+      return $char0;
     case TypeFlag.link:
-      return $1;
+      return $char1;
     case TypeFlag.symlink:
-      return $2;
+      return $char2;
     case TypeFlag.char:
-      return $3;
+      return $char3;
     case TypeFlag.block:
-      return $4;
+      return $char4;
     case TypeFlag.dir:
-      return $5;
+      return $char5;
     case TypeFlag.fifo:
-      return $6;
+      return $char6;
     case TypeFlag.reserved:
-      return $7;
+      return $char7;
     case TypeFlag.xHeader:
       return $x;
     case TypeFlag.xGlobalHeader:
@@ -158,8 +165,7 @@ const paxUname = 'uname';
 const paxGname = 'gname';
 const paxMtime = 'mtime';
 const paxAtime = 'atime';
-const paxCtime =
-    'ctime'; // Removed from later revision of PAX spec, but was valid
+const paxCtime = 'ctime'; // Removed from later revision of PAX spec, but was valid
 const paxComment = 'comment';
 const paxSchilyXattr = 'SCHILY.xattr.';
 
@@ -262,34 +268,34 @@ const int $lf = 0x0a;
 const int $space = 0x20;
 
 /// Character `0`.
-const int $0 = 0x30;
+const int $char0 = 0x30;
 
 /// Character `1`.
-const int $1 = 0x31;
+const int $char1 = 0x31;
 
 /// Character `2`.
-const int $2 = 0x32;
+const int $char2 = 0x32;
 
 /// Character `3`.
-const int $3 = 0x33;
+const int $char3 = 0x33;
 
 /// Character `4`.
-const int $4 = 0x34;
+const int $char4 = 0x34;
 
 /// Character `5`.
-const int $5 = 0x35;
+const int $char5 = 0x35;
 
 /// Character `6`.
-const int $6 = 0x36;
+const int $char6 = 0x36;
 
 /// Character `7`.
-const int $7 = 0x37;
+const int $char7 = 0x37;
 
 /// Character `8`.
-const int $8 = 0x38;
+const int $char8 = 0x38;
 
 /// Character `9`.
-const int $9 = 0x39;
+const int $char9 = 0x39;
 
 /// Character `<`.
 const int $equal = 0x3d;
