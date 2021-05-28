@@ -16,3 +16,10 @@ doc/api/
 test.tar
 .vscode
 .idea/
+
+.project
+.pub
+packages
+test/out
+.history
+test/tests/out/

@@ -3,3 +3,8 @@ include: package:extra_pedantic/analysis_options.yaml
 linter:
   rules:
     comment_references: true
+
+analyzer:
+  exclude:
+    - test/res/**
+    - test/out/**

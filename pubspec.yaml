@@ -1,10 +1,10 @@
-name: tar
-description: Memory-efficient, streaming implementation of the tar file format
-version: 0.4.0
-repository: https://github.com/simolus3/tar/
+name: tarzan
 
 environment:
   sdk: '>=2.12.0 <3.0.0'
+
+dependencies:
+  path: ^1.8.0-0
 
 dev_dependencies:
   extra_pedantic: ^1.4.0

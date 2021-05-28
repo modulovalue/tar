@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:tar/encoder/impl/tar_encoder.dart';
-import 'package:tar/encoder/interface/tar_encoder.dart';
-import 'package:tar/entry/impl/entry.dart';
-import 'package:tar/entry/interface/entry.dart';
-import 'package:tar/header/impl/header.dart';
-import 'package:tar/type_flag/impl/flags.dart';
+import 'package:tarzan/simon_tar/impl/entry.dart';
+import 'package:tarzan/simon_tar/impl/header.dart';
+import 'package:tarzan/simon_tar/impl/tar_encoder.dart';
+import 'package:tarzan/simon_tar/interface/entry.dart';
+import 'package:tarzan/simon_tar/interface/flags.dart';
+import 'package:tarzan/simon_tar/interface/tar_encoder.dart';
 
 Future<void> main() async {
   // Generate tar file claiming to have a 7 GB header
@@ -33,5 +33,5 @@ Future<void> main() async {
     ],
   ) //
       .transform(const TarEncoderTransformerImpl(OutputFormat.pax))
-      .pipe(File('reference/evil_large_header.tar').openWrite());
+      .pipe(File('reference/headers/evil_large_header.tar').openWrite());
 }
