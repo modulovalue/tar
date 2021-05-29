@@ -1,4 +1,4 @@
-import '../../base/interface/input_stream.dart';
+import 'input_stream.dart';
 
 /// A file contained in an Archive.
 abstract class ArchiveFile {

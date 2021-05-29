@@ -2,15 +2,15 @@ import 'dart:io' hide GZIP;
 
 import 'package:path/path.dart' as path;
 
-import '../../archive/impl/constants.dart';
-import '../../archive/impl/file.dart';
-import '../../archive/interface/file.dart';
-import '../../zip/impl/encoder.dart';
-import '../../zip/interface/encoder.dart';
-import '../impl/input_file_stream.dart';
-import '../impl/output_file_stream.dart';
-import '../interface/output_file_stream.dart';
-import '../interface/zip_file_encoder.dart';
+import '../../base/impl/constants.dart';
+import '../../base/impl/file.dart';
+import '../../base/impl/input_file_stream.dart';
+import '../../base/impl/output_file_stream.dart';
+import '../../base/interface/file.dart';
+import '../../base/interface/output_file_stream.dart';
+import '../interface/encoder.dart';
+import '../interface/io_zip_file_encoder.dart';
+import 'encoder.dart';
 
 class ZipFileEncoderImpl implements ZipFileEncoder {
   @override

@@ -1,6 +1,6 @@
 import 'dart:io' hide GZIP;
 
-import '../../archive/interface/file.dart';
+import '../../base/interface/file.dart';
 
 abstract class ZipFileEncoder {
   String get zip_path;

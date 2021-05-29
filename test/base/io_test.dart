@@ -1,17 +1,17 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:tarzan/base/impl/input_file_stream.dart';
 import 'package:tarzan/base/impl/input_stream.dart';
+import 'package:tarzan/base/impl/io_create_archive_from_dir.dart';
+import 'package:tarzan/base/impl/output_file_stream.dart';
 import 'package:tarzan/gzip/impl/gzip_decoder.dart';
 import 'package:tarzan/gzip/impl/gzip_encoder.dart';
-import 'package:tarzan/io/impl/input_file_stream.dart';
-import 'package:tarzan/io/impl/output_file_stream.dart';
-import 'package:tarzan/io/impl/tar_file_encoder.dart';
-import 'package:tarzan/io/impl/zip_file_encoder.dart';
+import 'package:tarzan/tar/impl/io_tar_file_encoder.dart';
 import 'package:tarzan/tar/impl/tar_decoder.dart';
-import 'package:tarzan/util/io_create_archive_from_dir.dart';
 import 'package:tarzan/zip/impl/decoder.dart';
 import 'package:tarzan/zip/impl/encoder.dart';
+import 'package:tarzan/zip/impl/io_zip_file_encoder.dart';
 import 'package:test/test.dart';
 
 import '../test_utils.dart';

@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:tarzan/archive/impl/archive.dart';
-import 'package:tarzan/archive/impl/file.dart';
+import 'package:tarzan/base/impl/archive.dart';
+import 'package:tarzan/base/impl/file.dart';
 import 'package:tarzan/gzip/impl/gzip_decoder.dart';
 import 'package:tarzan/tar/impl/tar_decoder.dart';
 import 'package:tarzan/tar/impl/tar_encoder.dart';
@@ -191,7 +191,7 @@ void main() {
     final List<int> bytes = file.readAsBytesSync();
     final archive = tar.decodeBytes(bytes, verify: true);
     final expected_files = <File>[];
-    ListDir(expected_files, Directory(p.join(testDirPath, 'res/test2')));
+    listDir(expected_files, Directory(p.join(testDirPath, 'res/test2')));
     expect(archive.numberOfFiles(), equals(4));
   });
   test('decode test2.tar.gz', () {
@@ -200,7 +200,7 @@ void main() {
     bytes = const GZipDecoderImpl().decodeBytes(bytes, verify: true);
     final archive = tar.decodeBytes(bytes, verify: true);
     final expected_files = <File>[];
-    ListDir(expected_files, Directory(p.join(testDirPath, 'res/test2')));
+    listDir(expected_files, Directory(p.join(testDirPath, 'res/test2')));
     expect(archive.numberOfFiles(), equals(4));
   });
   test('decode/encode', () {

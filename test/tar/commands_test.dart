@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:tarzan/base/impl/input_file_stream.dart';
+import 'package:tarzan/base/impl/output_file_stream.dart';
 import 'package:tarzan/gzip/impl/gzip_decoder.dart';
-import 'package:tarzan/io/impl/input_file_stream.dart';
-import 'package:tarzan/io/impl/output_file_stream.dart';
 import 'package:tarzan/tar/impl/command.dart';
 import 'package:test/test.dart';
 

@@ -1,7 +1,7 @@
-import '../../base/impl/input_stream.dart';
 import '../../zlib/impl/inflate.dart';
 import '../interface/file.dart';
 import 'constants.dart';
+import 'input_stream.dart';
 
 /// A file contained in an Archive.
 mixin ArchiveFileMixin implements ArchiveFile {

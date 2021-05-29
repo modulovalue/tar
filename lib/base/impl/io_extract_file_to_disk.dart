@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../archive/interface/archive.dart';
+import '../interface/archive.dart';
 
 void extractArchiveToDisk(Archive archive, String outputPath) {
   final outDir = Directory(outputPath);

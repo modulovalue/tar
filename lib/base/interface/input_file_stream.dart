@@ -1,4 +1,4 @@
-import '../../base/interface/input_stream.dart';
+import 'input_stream.dart';
 
 abstract class InputFileStream implements InputStream {
   String get path;

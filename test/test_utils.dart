@@ -30,7 +30,7 @@ zip archive
 format.
 ''';
 
-void ListDir(List<io.FileSystemEntity> files, io.Directory dir) {
+void listDir(List<io.FileSystemEntity> files, io.Directory dir) {
   final fileOrDirs = dir.listSync(recursive: true);
   for (final f in fileOrDirs) {
     if (f is io.File) {

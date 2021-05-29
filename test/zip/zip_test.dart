@@ -3,11 +3,11 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
-import 'package:tarzan/archive/impl/archive.dart';
-import 'package:tarzan/archive/impl/file.dart';
-import 'package:tarzan/io/impl/zip_file_encoder.dart';
+import 'package:tarzan/base/impl/archive.dart';
+import 'package:tarzan/base/impl/file.dart';
 import 'package:tarzan/zip/impl/decoder.dart';
 import 'package:tarzan/zip/impl/encoder.dart';
+import 'package:tarzan/zip/impl/io_zip_file_encoder.dart';
 import 'package:test/test.dart';
 
 import '../test_utils.dart';

@@ -1,9 +1,9 @@
-import '../../archive/impl/archive_mixin.dart';
-import '../../archive/impl/constants.dart';
-import '../../archive/impl/file.dart';
-import '../../archive/interface/file.dart';
+import '../../base/impl/archive_mixin.dart';
+import '../../base/impl/constants.dart';
 import '../../base/impl/exception.dart';
+import '../../base/impl/file.dart';
 import '../../base/impl/input_stream.dart';
+import '../../base/interface/file.dart';
 import '../../crc32/impl/crc32.dart';
 import '../interface/decoder.dart';
 import '../interface/directory.dart';

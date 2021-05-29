@@ -1,8 +1,8 @@
-import '../../archive/impl/archive.dart';
-import '../../archive/impl/constants.dart';
-import '../../archive/impl/file_mixin.dart';
-import '../../archive/interface/archive.dart';
+import '../../base/impl/archive.dart';
+import '../../base/impl/constants.dart';
+import '../../base/impl/file_mixin.dart';
 import '../../base/impl/input_stream.dart';
+import '../../base/interface/archive.dart';
 import '../../base/interface/input_stream.dart';
 import '../interface/tar_decoder.dart';
 import '../interface/tar_file.dart';
@@ -79,7 +79,8 @@ class TarArchiveFileImpl with ArchiveFileMixin implements TarArchiveFile {
   @override
   int? compressionType = ARCHIVE_STORE;
 
-  TarArchiveFileImpl(this.tarFile, String name, this.uncompressedSizeOfTheFile, InputStream? content) : this.name = name.replaceAll('\\', '/') {
+  TarArchiveFileImpl(this.tarFile, String name, this.uncompressedSizeOfTheFile, InputStream? content)
+      : this.name = name.replaceAll('\\', '/') {
     if (content is List<int>) {
       content_ = content;
       rawContent = InputStreamImpl(content_);

@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:tarzan/bzip2/impl/bzip2_encoder.dart';
-import 'package:tarzan/io/impl/zip_file_encoder.dart';
 import 'package:tarzan/tar/impl/tar_encoder.dart';
 import 'package:tarzan/zip/impl/decoder.dart';
+import 'package:tarzan/zip/impl/io_zip_file_encoder.dart';
 
 void main() {
   // Read the Zip file from disk.

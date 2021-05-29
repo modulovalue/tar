@@ -1,5 +1,5 @@
-import '../../archive/interface/archive.dart';
-import '../../archive/interface/file.dart';
+import '../../base/interface/archive.dart';
+import '../../base/interface/file.dart';
 import '../../base/interface/input_stream.dart';
 import 'tar_file.dart';
 

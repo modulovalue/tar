@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
-import '../../archive/interface/archive.dart';
-import '../../archive/interface/file.dart';
 import '../../base/impl/output_stream.dart';
+import '../../base/interface/archive.dart';
+import '../../base/interface/file.dart';
 import '../../base/interface/output_stream.dart';
 import '../interface/tar_encoder.dart';
 import 'tar_file.dart';

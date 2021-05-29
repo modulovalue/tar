@@ -1,6 +1,6 @@
-import '../../base/impl/input_stream.dart';
 import 'constants.dart';
 import 'file_mixin.dart';
+import 'input_stream.dart';
 
 /// A file contained in an Archive.
 class ArchiveFileImpl with ArchiveFileMixin {

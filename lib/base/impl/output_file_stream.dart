@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import '../../base/impl/byte_order_constants.dart';
-import '../../base/impl/input_stream.dart';
-import '../../base/interface/input_stream.dart';
 import '../interface/input_file_stream.dart';
+import '../interface/input_stream.dart';
 import '../interface/output_file_stream.dart';
+import 'byte_order_constants.dart';
+import 'input_stream.dart';
 
 class OutputFileStreamImpl implements OutputFileStream {
   @override

@@ -1,10 +1,10 @@
 import 'dart:convert';
 
-import '../../archive/impl/constants.dart';
-import '../../archive/interface/archive.dart';
-import '../../archive/interface/file.dart';
+import '../../base/impl/constants.dart';
 import '../../base/impl/input_stream.dart';
 import '../../base/impl/output_stream.dart';
+import '../../base/interface/archive.dart';
+import '../../base/interface/file.dart';
 import '../../base/interface/input_stream.dart';
 import '../../base/interface/output_stream.dart';
 import '../../crc32/impl/crc32.dart';

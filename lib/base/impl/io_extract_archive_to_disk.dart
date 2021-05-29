@@ -1,13 +1,13 @@
 import 'dart:io';
 
-import '../archive/interface/archive.dart';
-import '../base/impl/input_stream.dart';
-import '../bzip2/impl/bzip2_decoder.dart';
-import '../gzip/impl/gzip_decoder.dart';
-import '../io/impl/input_file_stream.dart';
-import '../io/impl/output_file_stream.dart';
-import '../tar/impl/tar_decoder.dart';
-import '../zip/impl/decoder.dart';
+import '../../bzip2/impl/bzip2_decoder.dart';
+import '../../gzip/impl/gzip_decoder.dart';
+import '../../tar/impl/tar_decoder.dart';
+import '../../zip/impl/decoder.dart';
+import '../interface/archive.dart';
+import 'input_file_stream.dart';
+import 'input_stream.dart';
+import 'output_file_stream.dart';
 
 void extractFileToDisk(String inputPath, String outputPath, {String? password}) {
   Directory? tempDir;

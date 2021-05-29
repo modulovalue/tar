@@ -1,12 +1,12 @@
 import 'dart:io';
 
-import '../../archive/impl/constants.dart';
+import '../../base/impl/constants.dart';
+import '../../base/impl/input_file_stream.dart';
+import '../../base/impl/output_file_stream.dart';
 import '../../bzip2/impl/bzip2_decoder.dart';
 import '../../gzip/impl/gzip_decoder.dart';
-import '../../io/impl/input_file_stream.dart';
-import '../../io/impl/output_file_stream.dart';
-import '../../io/impl/tar_file_encoder.dart';
 import '../interface/command.dart';
+import 'io_tar_file_encoder.dart';
 import 'tar_decoder.dart';
 
 class TarCommandImpl implements TarCommand {

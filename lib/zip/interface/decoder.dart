@@ -1,7 +1,7 @@
-import '../../archive/impl/archive_mixin.dart';
-import '../../archive/interface/archive.dart';
-import '../../archive/interface/file.dart';
+import '../../base/impl/archive_mixin.dart';
 import '../../base/impl/input_stream.dart';
+import '../../base/interface/archive.dart';
+import '../../base/interface/file.dart';
 import 'directory.dart';
 
 /// Decode a zip formatted buffer into an [Archive] object.

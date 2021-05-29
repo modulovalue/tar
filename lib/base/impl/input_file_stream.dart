@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import '../../base/impl/byte_order_constants.dart';
-import '../../base/impl/exception.dart';
-import '../../base/impl/input_stream.dart';
 import '../interface/input_file_stream.dart';
+import 'byte_order_constants.dart';
+import 'exception.dart';
+import 'input_stream.dart';
 
 class InputFileStreamImpl implements InputFileStream {
   static const int _kDefaultBufferSize = 4096;

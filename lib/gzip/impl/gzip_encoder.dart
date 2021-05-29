@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import '../../archive/impl/constants.dart';
+import '../../base/impl/constants.dart';
 import '../../base/impl/output_stream.dart';
 import '../../base/interface/input_stream.dart';
 import '../../base/interface/output_stream.dart';

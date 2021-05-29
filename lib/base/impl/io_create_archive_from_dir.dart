@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
-import '../archive/impl/archive.dart';
-import '../archive/impl/file.dart';
-import '../archive/interface/archive.dart';
-import '../io/impl/input_file_stream.dart';
+import '../interface/archive.dart';
+import 'archive.dart';
+import 'file.dart';
+import 'input_file_stream.dart';
 
 Archive createArchiveFromDirectory(Directory dir, {bool includeDirName = true}) {
   final archive = ArchiveImpl();

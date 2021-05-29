@@ -1,4 +1,4 @@
-import '../../archive/impl/constants.dart';
+import '../../base/impl/constants.dart';
 import '../../base/impl/exception.dart';
 import '../../base/impl/input_stream.dart';
 import '../../base/interface/input_stream.dart';

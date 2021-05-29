@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import '../../adler32/impl/adler32.dart';
-import '../../archive/impl/constants.dart';
+import '../../base/impl/constants.dart';
 import '../../base/impl/byte_order_constants.dart';
 import '../../base/impl/exception.dart';
 import '../../base/impl/input_stream.dart';

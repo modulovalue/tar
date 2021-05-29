@@ -2,15 +2,15 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
-import '../../archive/impl/constants.dart';
-import '../../archive/impl/file.dart';
+import '../../base/impl/constants.dart';
+import '../../base/impl/file.dart';
+import '../../base/impl/input_file_stream.dart';
+import '../../base/impl/output_file_stream.dart';
+import '../../base/interface/output_file_stream.dart';
 import '../../gzip/impl/gzip_encoder.dart';
-import '../../tar/impl/tar_encoder.dart';
-import '../../tar/interface/tar_encoder.dart';
-import '../impl/input_file_stream.dart';
-import '../impl/output_file_stream.dart';
-import '../interface/output_file_stream.dart';
-import '../interface/tar_file_encoder.dart';
+import '../interface/io_tar_file_encoder.dart';
+import '../interface/tar_encoder.dart';
+import 'tar_encoder.dart';
 
 class TarFileEncoderImpl implements TarFileEncoder {
   @override
